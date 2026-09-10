@@ -1,0 +1,51 @@
+name: CI
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:17-alpine
+        env:
+          POSTGRES_USER: fusion
+          POSTGRES_PASSWORD: fusion
+          POSTGRES_DB: fusion
+        ports:
+          - 5435:5432
+        options: >-
+          --health-cmd "pg_isready -U fusion"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    env:
+      DATABASE_URL: postgresql://fusion:fusion@localhost:5435/fusion?schema=public
+      NODE_ENV: test
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npm run db:deploy -w backend
+
+      # One command, the same one used locally, so CI cannot drift from what a
+      # developer runs before pushing. It covers contract drift, types, lint,
+      # the boundary assertions, tests and both production builds.
+      - run: npm run verify
+
+  docker:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      # The deployable is part of the contract: a Dockerfile that stops
+      # building is a broken release, not a broken developer setup.
+      - uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: backend/Dockerfile
+          push: false

@@ -1,0 +1,49 @@
+{
+  "note": "Illustrative seed data used by the prototype. Times are 2026-09-10 local desk time. Notional, signedQty and signedNotional are NOT stored — they are derived in the UI as qty*price and ±qty by side.",
+  "users": [
+    { "name": "Marcus Ellery", "initials": "ME", "email": "m.ellery@fusioncap.com", "desk": "Equity Delta", "signedIn": true },
+    { "name": "Priya Raman", "initials": "PR", "email": "p.raman@fusioncap.com", "desk": "Equity Vol" },
+    { "name": "Dan Okafor", "initials": "DO", "email": "d.okafor@fusioncap.com", "desk": "Equity Fin" },
+    { "name": "Sofia Lindqvist", "initials": "SL", "email": "s.lindqvist@fusioncap.com", "desk": "Equity Health" }
+  ],
+  "books": ["EQ-DELTA", "EQ-VOL", "EQ-FIN", "EQ-ENERGY", "EQ-HEALTH"],
+  "counterparties": ["Citadel Securities", "Jane Street", "Goldman Sachs", "Morgan Stanley", "Barclays", "UBS"],
+  "statuses": ["NEW", "EXECUTED", "CANCELLED"],
+  "conflictDemoTradeId": "TRD-2041",
+  "auditDemoTradeId": "TRD-2039",
+  "trades": [
+    { "id": "TRD-2038", "symbol": "AAPL", "side": "BUY", "qty": 12500, "price": 214.32, "status": "NEW", "trader": "Marcus Ellery", "book": "EQ-DELTA", "counterparty": "Citadel Securities", "time": "09:31:04", "version": 1 },
+    { "id": "TRD-2039", "symbol": "MSFT", "side": "SELL", "qty": 4200, "price": 431.18, "status": "EXECUTED", "trader": "Priya Raman", "book": "EQ-DELTA", "counterparty": "Jane Street", "time": "09:33:12", "version": 4 },
+    { "id": "TRD-2040", "symbol": "NVDA", "side": "BUY", "qty": 8000, "price": 118.74, "status": "NEW", "trader": "Marcus Ellery", "book": "EQ-VOL", "counterparty": "Goldman Sachs", "time": "09:41:55", "version": 1 },
+    { "id": "TRD-2041", "symbol": "TSLA", "side": "SELL", "qty": 3150, "price": 262.05, "status": "NEW", "trader": "Marcus Ellery", "book": "EQ-VOL", "counterparty": "Morgan Stanley", "time": "09:52:18", "version": 3 },
+    { "id": "TRD-2042", "symbol": "JPM", "side": "BUY", "qty": 15000, "price": 208.61, "status": "EXECUTED", "trader": "Dan Okafor", "book": "EQ-FIN", "counterparty": "Barclays", "time": "10:02:41", "version": 2 },
+    { "id": "TRD-2043", "symbol": "XOM", "side": "SELL", "qty": 9400, "price": 116.29, "status": "CANCELLED", "trader": "Priya Raman", "book": "EQ-ENERGY", "counterparty": "UBS", "time": "10:14:07", "version": 3 },
+    { "id": "TRD-2044", "symbol": "AMZN", "side": "BUY", "qty": 6750, "price": 187.44, "status": "NEW", "trader": "Sofia Lindqvist", "book": "EQ-DELTA", "counterparty": "Citadel Securities", "time": "10:21:33", "version": 1 },
+    { "id": "TRD-2045", "symbol": "GOOGL", "side": "SELL", "qty": 2900, "price": 166.92, "status": "NEW", "trader": "Dan Okafor", "book": "EQ-DELTA", "counterparty": "Jane Street", "time": "10:29:50", "version": 1 },
+    { "id": "TRD-2046", "symbol": "META", "side": "BUY", "qty": 5100, "price": 592.13, "status": "EXECUTED", "trader": "Sofia Lindqvist", "book": "EQ-VOL", "counterparty": "Goldman Sachs", "time": "10:37:26", "version": 2 },
+    { "id": "TRD-2047", "symbol": "BRK.B", "side": "SELL", "qty": 1250, "price": 468.77, "status": "NEW", "trader": "Marcus Ellery", "book": "EQ-FIN", "counterparty": "UBS", "time": "10:44:02", "version": 1 },
+    { "id": "TRD-2048", "symbol": "UNH", "side": "BUY", "qty": 3600, "price": 512.40, "status": "CANCELLED", "trader": "Priya Raman", "book": "EQ-HEALTH", "counterparty": "Barclays", "time": "10:51:19", "version": 2 },
+    { "id": "TRD-2049", "symbol": "CVX", "side": "SELL", "qty": 7800, "price": 148.55, "status": "NEW", "trader": "Dan Okafor", "book": "EQ-ENERGY", "counterparty": "Morgan Stanley", "time": "11:03:44", "version": 1 },
+    { "id": "TRD-2050", "symbol": "LLY", "side": "BUY", "qty": 1900, "price": 812.06, "status": "NEW", "trader": "Sofia Lindqvist", "book": "EQ-HEALTH", "counterparty": "Jane Street", "time": "11:12:09", "version": 1 },
+    { "id": "TRD-2051", "symbol": "WMT", "side": "SELL", "qty": 11300, "price": 79.88, "status": "EXECUTED", "trader": "Marcus Ellery", "book": "EQ-DELTA", "counterparty": "Citadel Securities", "time": "11:20:37", "version": 2 },
+    { "id": "TRD-2052", "symbol": "AVGO", "side": "BUY", "qty": 2400, "price": 174.63, "status": "NEW", "trader": "Priya Raman", "book": "EQ-VOL", "counterparty": "Goldman Sachs", "time": "11:28:55", "version": 1 }
+  ],
+  "auditExample": {
+    "tradeId": "TRD-2039",
+    "entries": [
+      { "type": "CREATED", "version": 1, "ts": "2026-09-10 09:33:12", "actor": "Priya Raman", "note": "SELL 4,200 MSFT booked to EQ-DELTA.", "changes": [] },
+      { "type": "AMENDED", "version": 2, "ts": "2026-09-10 09:35:29", "actor": "Dan Okafor", "changes": [ { "field": "Quantity", "before": "3,360", "after": "4,200" }, { "field": "Price", "before": "429.02", "after": "431.18" } ] },
+      { "type": "AMENDED", "version": 3, "ts": "2026-09-10 09:37:46", "actor": "Sofia Lindqvist", "changes": [ { "field": "Counterparty", "before": "Goldman Sachs", "after": "Jane Street" } ] },
+      { "type": "EXECUTED", "version": 4, "ts": "2026-09-10 09:40:03", "actor": "Priya Raman", "changes": [ { "field": "Status", "before": "NEW", "after": "EXECUTED" } ] }
+    ]
+  },
+  "conflictExample": {
+    "tradeId": "TRD-2041",
+    "openedVersion": 3,
+    "serverVersion": 4,
+    "serverActor": "Dan Okafor",
+    "serverSavedAt": "14:07:52",
+    "attempted": { "qty": 4200, "price": 261.75, "counterparty": "Morgan Stanley" },
+    "server": { "qty": 3600, "price": 263.40, "counterparty": "Barclays" }
+  }
+}

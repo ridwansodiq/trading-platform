@@ -1,0 +1,48 @@
+services:
+  postgres:
+    image: postgres:17-alpine
+    environment:
+      POSTGRES_USER: fusion
+      POSTGRES_PASSWORD: fusion
+      POSTGRES_DB: fusion
+    ports:
+      - "5435:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U fusion -d fusion"]
+      interval: 3s
+      timeout: 3s
+      retries: 15
+    volumes:
+      - fusion-postgres:/var/lib/postgresql/data
+
+  # Opt-in: `docker compose --profile app up` runs the built API against the
+  # database above. Plain `docker compose up` still starts only PostgreSQL, so
+  # the usual `npm run dev` workflow is unchanged.
+  api:
+    profiles: ["app"]
+    build:
+      context: .
+      dockerfile: backend/Dockerfile
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      NODE_ENV: production
+      DATABASE_URL: postgresql://fusion:fusion@postgres:5432/fusion?schema=public
+      PORT: 3001
+      FRONTEND_ORIGIN: http://localhost:5173
+      # Swagger UI describes the whole API surface, so production must ask.
+      ENABLE_API_DOCS: "false"
+    ports:
+      - "3001:3001"
+    command: sh -c "npm run db:deploy && node dist/server.js"
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://127.0.0.1:3001/api/health || exit 1"]
+      interval: 5s
+      timeout: 3s
+      retries: 12
+    # The server drains its SSE streams on SIGTERM; give it room to finish.
+    stop_grace_period: 15s
+
+volumes:
+  fusion-postgres:

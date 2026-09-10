@@ -1,0 +1,12 @@
+{
+  "extends": "../tsconfig.base.json",
+  "compilerOptions": {
+    "target": "ES2022",
+    "module": "NodeNext",
+    "moduleResolution": "NodeNext",
+    "noEmit": true,
+    "types": ["node"]
+  },
+  "//": "Everything that runs through tsx rather than being built: tests, the seed, the OpenAPI generator and the Vitest config. Type-checked, never emitted.",
+  "include": ["src", "scripts", "prisma", "vitest.config.ts"]
+}

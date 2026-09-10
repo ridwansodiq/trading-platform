@@ -1,0 +1,337 @@
+@import "tailwindcss";
+@import "tw-animate-css";
+
+/*
+ * Fusion Trade Blotter — design tokens.
+ *
+ * Two layers, both defined here and referenced everywhere:
+ *   1. ShadCN semantic contract (--background, --primary, --ring, ...) in the
+ *      Built AI "Violet" preset. Consumed by the primitives in components/ui.
+ *   2. Blotter tokens (--surface, --ink-*, --line, --violet, ...) from
+ *      design_handoff/tokens + the v2 prototype. Consumed by feature code.
+ *
+ * Never hardcode a hex value in a component. Add a token here instead.
+ */
+
+@custom-variant dark (&:where([data-fusion-theme="dark"], [data-fusion-theme="dark"] *));
+
+:root {
+  /* ── Blotter tokens (light) ── */
+  --bg-page: #f8fafc;
+  --surface: #ffffff;
+  --raised: #ffffff;
+  --surface-muted: #f8fafc;
+  --surface-muted-2: #f1f5f9;
+  --line: #e2e8f0;
+  --line-soft: #f1f5f9;
+
+  --ink: #0f172a;
+  --ink-2: #334155;
+  --ink-3: #475569;
+  --ink-4: #64748b;
+  --ink-5: #94a3b8;
+  --ink-6: #cbd5e1;
+
+  --violet: #5c3fdd;
+  --violet-2: #4c1d95;
+  --violet-soft: #f5f3ff;
+  --violet-soft-2: #ede9fe;
+  --violet-chip: #ddd6fe;
+  --violet-ink: #5b21b6;
+  --ring: #8b5cf6;
+
+  --green: #047857;
+  --green-2: #065f46;
+  --green-3: #059669;
+  --green-4: #10b981;
+  --green-soft: #ecfdf5;
+  --green-soft-2: #d1fae5;
+  --green-line: #a7f3d0;
+
+  --red: #b91c1c;
+  --red-2: #dc2626;
+  --red-soft: #fef2f2;
+  --red-soft-2: #fee2e2;
+  --red-line: #fecaca;
+
+  --amber: #92400e;
+  --amber-2: #b45309;
+  --amber-3: #f59e0b;
+  --amber-soft: #fffbeb;
+  --amber-soft-2: #fef3c7;
+  --amber-line: #fde68a;
+
+  --scrim: rgba(15, 23, 42, 0.35);
+
+  /* ── Radii: this app uses a tighter 3–8px scale (operational density) ── */
+  --radius-kbd: 3px;
+  --radius-tag: 4px;
+  --radius-control: 5px;
+  --radius-base: 6px;
+  --radius-panel: 8px;
+
+  /*
+   * ShadCN semantic contract, derived from the blotter tokens above so the
+   * primitives in components/ui and the feature code cannot drift apart.
+   * Because these are var() references, the dark overrides below flow through
+   * without restating a single colour.
+   */
+  --background: var(--surface);
+  --foreground: var(--ink);
+  --card: var(--surface);
+  --card-foreground: var(--ink);
+  --popover: var(--surface);
+  --popover-foreground: var(--ink);
+  --primary: var(--violet);
+  --primary-foreground: #ffffff;
+  --secondary: var(--surface-muted-2);
+  --secondary-foreground: var(--ink);
+  --muted: var(--surface-muted);
+  --muted-foreground: var(--ink-4);
+  --accent: var(--surface-muted-2);
+  --accent-foreground: var(--ink);
+  --destructive: var(--red-2);
+  --destructive-foreground: #ffffff;
+  --border: var(--line);
+  --input: var(--line);
+}
+
+[data-fusion-theme="dark"] {
+  /* ── Blotter tokens (dark) — accents shift to 300/400 tints for ≥4.5:1 ── */
+  --bg-page: #0c0e12;
+  --surface: #15181e;
+  --raised: #2e343e;
+  --surface-muted: #1b1f26;
+  --surface-muted-2: #232830;
+  --line: #2c323b;
+  --line-soft: #242931;
+
+  --ink: #eaecef;
+  --ink-2: #c6cbd3;
+  --ink-3: #b0b7c1;
+  --ink-4: #929aa6;
+  --ink-5: #79818e;
+  --ink-6: #4c535c;
+
+  --violet: #7c5cff;
+  --violet-2: #9277ff;
+  --violet-soft: #221d3a;
+  --violet-soft-2: #2b2452;
+  --violet-chip: #4c3fa8;
+  --violet-ink: #c4b5fd;
+  --ring: #a78bfa;
+
+  --green: #34d399;
+  --green-2: #6ee7b7;
+  --green-3: #10b981;
+  --green-4: #34d399;
+  --green-soft: #0f2a22;
+  --green-soft-2: #14382c;
+  --green-line: #1f5b45;
+
+  --red: #f87171;
+  --red-2: #ef4444;
+  --red-soft: #2c1518;
+  --red-soft-2: #3a1a1f;
+  --red-line: #5e2626;
+
+  --amber: #fcd34d;
+  --amber-2: #f59e0b;
+  --amber-3: #f59e0b;
+  --amber-soft: #2b2212;
+  --amber-soft-2: #3a2e18;
+  --amber-line: #5c4718;
+
+  --scrim: rgba(2, 4, 8, 0.62);
+}
+
+@theme inline {
+  /* Type families — Geist for UI, Geist Mono for every id, number, timestamp */
+  --font-sans: "Geist Variable", system-ui, -apple-system, "Segoe UI", sans-serif;
+  --font-mono: "Geist Mono Variable", ui-monospace, SFMono-Regular, Menlo, monospace;
+
+  /* Type scale — the design's 10–15px operational scale */
+  --text-micro: 10px;
+  --text-micro-2: 10.5px;
+  --text-mini: 11px;
+  --text-mini-2: 11.5px;
+  --text-cell: 12px;
+  --text-cell-2: 12.5px;
+  --text-body: 13px;
+  --text-body-2: 13.5px;
+  --text-title: 15px;
+
+  /* ShadCN contract */
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-destructive: var(--destructive);
+  --color-destructive-foreground: var(--destructive-foreground);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+
+  /* Blotter surfaces */
+  --color-bg-page: var(--bg-page);
+  --color-surface: var(--surface);
+  --color-raised: var(--raised);
+  --color-surface-muted: var(--surface-muted);
+  --color-surface-muted-2: var(--surface-muted-2);
+  --color-line: var(--line);
+  --color-line-soft: var(--line-soft);
+
+  /* Blotter ink */
+  --color-ink: var(--ink);
+  --color-ink-2: var(--ink-2);
+  --color-ink-3: var(--ink-3);
+  --color-ink-4: var(--ink-4);
+  --color-ink-5: var(--ink-5);
+  --color-ink-6: var(--ink-6);
+
+  /* Blotter accents */
+  --color-violet: var(--violet);
+  --color-violet-2: var(--violet-2);
+  --color-violet-soft: var(--violet-soft);
+  --color-violet-soft-2: var(--violet-soft-2);
+  --color-violet-chip: var(--violet-chip);
+  --color-violet-ink: var(--violet-ink);
+  --color-green: var(--green);
+  --color-green-2: var(--green-2);
+  --color-green-3: var(--green-3);
+  --color-green-4: var(--green-4);
+  --color-green-soft: var(--green-soft);
+  --color-green-soft-2: var(--green-soft-2);
+  --color-green-line: var(--green-line);
+  --color-red: var(--red);
+  --color-red-2: var(--red-2);
+  --color-red-soft: var(--red-soft);
+  --color-red-soft-2: var(--red-soft-2);
+  --color-red-line: var(--red-line);
+  --color-amber: var(--amber);
+  --color-amber-2: var(--amber-2);
+  --color-amber-3: var(--amber-3);
+  --color-amber-soft: var(--amber-soft);
+  --color-amber-soft-2: var(--amber-soft-2);
+  --color-amber-line: var(--amber-line);
+  --color-scrim: var(--scrim);
+
+  /* Radii */
+  --radius-xs: var(--radius-kbd);
+  --radius-sm: var(--radius-tag);
+  --radius-md: var(--radius-base);
+  --radius-lg: var(--radius-base);
+  --radius-xl: var(--radius-panel);
+
+  /* Shadows — reserved for popovers, drawers, dialogs */
+  --shadow-xs: 0 1px 2px 0 rgb(0 0 0 / 0.05);
+  --shadow-sm: 0 1px 3px 0 rgb(0 0 0 / 0.1), 0 1px 2px -1px rgb(0 0 0 / 0.1);
+  --shadow-lg: 0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -4px rgb(0 0 0 / 0.1);
+  --shadow-2xl: 0 25px 50px -12px rgb(0 0 0 / 0.25);
+  --shadow-drawer: -10px 0 30px -12px rgba(2, 4, 8, 0.35);
+}
+
+@layer base {
+  * {
+    @apply border-line;
+  }
+
+  html {
+    color-scheme: light;
+  }
+
+  [data-fusion-theme="dark"] {
+    color-scheme: dark;
+  }
+
+  body {
+    @apply bg-bg-page text-ink font-sans;
+    margin: 0;
+    min-width: 320px;
+    min-height: 100vh;
+    font-synthesis: none;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  /* Tabular numerals on every number, id and timestamp */
+  .font-mono,
+  [class*="tabular"] {
+    font-variant-numeric: tabular-nums;
+  }
+
+  button:disabled {
+    cursor: not-allowed;
+  }
+}
+
+@layer utilities {
+  /* Motion inventory — 120–200ms ease-out, opacity/translate only */
+  .fusion-tick-up {
+    animation: fusion-tick-up 2.4s ease-out;
+  }
+
+  .fusion-tick-down {
+    animation: fusion-tick-down 2.4s ease-out;
+  }
+
+  .fusion-row-flash {
+    animation: fusion-row-flash 2.4s ease-out;
+  }
+
+  .scrollbar-thin {
+    scrollbar-width: thin;
+    scrollbar-color: var(--ink-6) transparent;
+  }
+}
+
+@keyframes fusion-tick-up {
+  0%,
+  35% {
+    background-color: var(--green-soft);
+    color: var(--green);
+  }
+  100% {
+    background-color: transparent;
+  }
+}
+
+@keyframes fusion-tick-down {
+  0%,
+  35% {
+    background-color: var(--red-soft);
+    color: var(--red);
+  }
+  100% {
+    background-color: transparent;
+  }
+}
+
+@keyframes fusion-row-flash {
+  0%,
+  25% {
+    background-color: var(--violet-soft-2);
+  }
+  100% {
+    background-color: transparent;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}

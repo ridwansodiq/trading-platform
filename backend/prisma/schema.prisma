@@ -1,0 +1,118 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum TradeSide {
+  BUY
+  SELL
+}
+
+enum TradeStatus {
+  NEW
+  EXECUTED
+  CANCELLED
+}
+
+enum TradeAuditEventType {
+  CREATED
+  AMENDED
+  EXECUTED
+  CANCELLED
+}
+
+model User {
+  id          String            @id @default(uuid()) @db.Uuid
+  email       String            @unique
+  displayName String
+  desk        String
+  passwordHash String
+  createdAt   DateTime          @default(now())
+  updatedAt   DateTime          @updatedAt
+  sessions    Session[]
+  trades      Trade[]           @relation("TradeTrader")
+  auditEvents TradeAuditEvent[] @relation("AuditActor")
+}
+
+model Session {
+  tokenHash String   @id
+  userId    String   @db.Uuid
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([expiresAt])
+}
+
+model Trade {
+  id             String            @id @default(uuid()) @db.Uuid
+  tradeId        String            @unique
+  symbol         String
+  side           TradeSide
+  quantity       Int
+  price          Decimal           @db.Decimal(18, 4)
+  traderUserId   String            @db.Uuid
+  /// Denormalised copy of the booking user's display name at the time of the
+  /// trade. Kept as a column because the blotter filters, groups and sorts by
+  /// it, which a join to `User` cannot index as cheaply. It is deliberately not
+  /// refreshed when a user is renamed: the blotter shows who booked the trade
+  /// under the name they booked it with, matching the audit log.
+  trader         String
+  book           String
+  counterparty   String
+  tradeTimestamp DateTime
+  status         TradeStatus       @default(NEW)
+  version        Int               @default(1)
+  createdAt      DateTime          @default(now())
+  updatedAt      DateTime          @updatedAt
+  traderUser     User              @relation("TradeTrader", fields: [traderUserId], references: [id])
+  auditEvents    TradeAuditEvent[]
+
+  // Equality filters.
+  @@index([status])
+  @@index([symbol])
+  @@index([trader])
+  @@index([book])
+  @@index([side])
+  @@index([counterparty])
+  // Sort keys. Each carries `tradeId` so the deterministic tiebreak the list
+  // query appends is satisfied by the index rather than by a re-sort.
+  @@index([tradeTimestamp, tradeId])
+  @@index([price, tradeId])
+  @@index([quantity, tradeId])
+  @@index([version, tradeId])
+  // Trigram indexes for the blotter's free-text search. Without them the five
+  // `ILIKE '%…%'` predicates behind the search box are a sequential scan per
+  // keystroke. They must be modelled here rather than added in raw SQL: an
+  // index Prisma cannot see is one it drops on the next `migrate dev`.
+  @@index([tradeId(ops: raw("gin_trgm_ops"))], type: Gin, map: "Trade_tradeId_trgm_idx")
+  @@index([symbol(ops: raw("gin_trgm_ops"))], type: Gin, map: "Trade_symbol_trgm_idx")
+  @@index([trader(ops: raw("gin_trgm_ops"))], type: Gin, map: "Trade_trader_trgm_idx")
+  @@index([book(ops: raw("gin_trgm_ops"))], type: Gin, map: "Trade_book_trgm_idx")
+  @@index([counterparty(ops: raw("gin_trgm_ops"))], type: Gin, map: "Trade_counterparty_trgm_idx")
+}
+
+model TradeAuditEvent {
+  id               String              @id @default(uuid()) @db.Uuid
+  tradeId          String              @db.Uuid
+  tradeVersion     Int
+  eventType        TradeAuditEventType
+  actorUserId      String              @db.Uuid
+  actorDisplayName String
+  before           Json?
+  after            Json
+  createdAt        DateTime            @default(now())
+  trade            Trade               @relation(fields: [tradeId], references: [id], onDelete: Restrict)
+  actor             User                @relation("AuditActor", fields: [actorUserId], references: [id], onDelete: Restrict)
+
+  @@unique([tradeId, tradeVersion])
+  @@index([tradeId, createdAt])
+  // PostgreSQL does not index a foreign key automatically, so without this the
+  // `Restrict` check on deleting a user scans the whole audit table.
+  @@index([actorUserId])
+}

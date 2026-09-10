@@ -1,0 +1,11 @@
+node_modules/
+dist/
+.env
+.DS_Store
+coverage/
+
+# Scratch files written by scripts/check-boundaries.mjs
+.boundary-probe-*
+
+# TypeScript incremental build cache
+*.tsbuildinfo

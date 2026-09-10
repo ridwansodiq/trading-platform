@@ -1,0 +1,14 @@
+{
+  "extends": "../tsconfig.base.json",
+  "compilerOptions": {
+    "target": "ES2022",
+    "module": "NodeNext",
+    "moduleResolution": "NodeNext",
+    "outDir": "dist",
+    "rootDir": "src",
+    "types": ["node"]
+  },
+  "//": "Only `src` is compiled, so the entry point emits to dist/server.js. Scripts, seeds and config are type-checked by tsconfig.tools.json but never built.",
+  "include": ["src"],
+  "exclude": ["src/**/*.test.ts"]
+}
