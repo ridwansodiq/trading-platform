@@ -15,7 +15,7 @@ import {
 import { ConflictPanel } from "@/features/trades/components/conflict-panel";
 import { FilterCombobox } from "@/features/trades/components/filter-combobox";
 import type { VersionConflict } from "@/features/trades/hooks/use-trade-mutations";
-import type { TradeFormMode } from "@/features/trades/hooks/use-trade-workflow";
+import type { TradeFormMode } from "@/features/trades/hooks/use-trade-form";
 import {
   toTradeCommand,
   type AmendableField,

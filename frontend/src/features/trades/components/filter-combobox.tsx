@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Combobox } from "@/components/combobox";
+import { Combobox } from "@/components/ui/combobox";
 import { useFilterOptions } from "@/features/trades/hooks/use-filter-options";
 import type { TradeFilterField } from "@/api/generated/models";
 

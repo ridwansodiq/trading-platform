@@ -4,9 +4,11 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogTitle } f
 import { SideTag } from "@/features/trades/components/trade-badges";
 import { formatPrice, formatQuantity } from "@/lib/format";
 import { cn } from "@/lib/utils";
+import type { TransitionKind } from "@/features/trades/hooks/use-trade-dialogs";
 import type { TradeView } from "@/types/trade";
 
-export type TransitionKind = "execute" | "cancel";
+// Re-exported so the dialog's own consumers need only one import.
+export type { TransitionKind };
 
 const COPY: Record<TransitionKind, { title: string; warning: string; confirm: string; icon: typeof Check }> = {
   execute: {

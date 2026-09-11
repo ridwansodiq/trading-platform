@@ -20,8 +20,6 @@ import { toTradeView } from "@/features/trades/lib/trade-view";
 import type { AmendTradeCommand, CreateTradeCommand } from "@/api/generated/models";
 import type { Trade, TradeView } from "@/types/trade";
 
-export type TransitionKind = "execute" | "cancel";
-
 export type TradeFormMode = { kind: "create" } | { kind: "amend"; trade: TradeView };
 
 /**
@@ -36,57 +34,47 @@ type FormState = {
   values: FormValues;
 };
 
-export type TradeWorkflow = {
-  formMode: TradeFormMode | null;
-  formValues: FormValues | null;
+export type TradeForm = {
+  mode: TradeFormMode | null;
+  values: FormValues | null;
   /** Fields the user edited, and the only ones an amendment sends. */
   changed: readonly AmendableField[];
   errors: FieldErrors;
   conflict: VersionConflict | null;
   submitError: string | null;
-  confirm: { kind: TransitionKind; trade: TradeView } | null;
-  auditTrade: TradeView | null;
   pending: boolean;
-  transitionPending: boolean;
-  /** True while any modal surface is open, so hotkeys can stand down. */
-  isModalOpen: boolean;
+  /** True while the drawer is up, so the blotter's hotkeys can stand down. */
+  isOpen: boolean;
 
-  setFormValues: (next: FormValues) => void;
+  setValues: (next: FormValues) => void;
   startCreate: () => void;
   startAmend: (trade: TradeView) => void;
-  startTransition: (kind: TransitionKind, trade: TradeView) => void;
-  openAudit: (trade: TradeView) => void;
-  closeAudit: () => void;
-  closeConfirm: () => void;
-  closeForm: () => void;
-  submitForm: () => Promise<void>;
-  confirmTransition: () => Promise<void>;
+  close: () => void;
+  submit: () => Promise<void>;
   discardConflict: () => void;
   reapplyConflict: (server: Trade) => void;
 };
 
 /**
- * Everything the blotter can be in the middle of doing: booking, amending,
- * confirming a terminal action, reading history, or holding a conflict.
+ * Booking and amending a trade, including losing a race while doing so.
  *
- * These are one workflow rather than several independent flags — opening a form
- * clears a stale conflict, resolving a conflict rebases the form — so they live
- * together, and the screen component is left with layout.
+ * These four pieces of state are one thing, not four: opening a form clears a
+ * stale conflict, a rejected submission writes field errors, and resolving a
+ * conflict rebases the form itself. Splitting them would mean keeping them in
+ * step from the outside.
  *
- * The form's own values live here too. Every reset is therefore an event (a
- * user opened a form, a user accepted a newer version) rather than an effect
- * reacting to a changed prop, which is what makes it safe for an incoming SSE
- * re-render to never disturb what someone has typed.
+ * The form's values live here rather than in the drawer, so every reset is an
+ * event — a user opened a form, a user accepted a newer version — rather than
+ * an effect reacting to a changed prop. That is what makes it safe for an
+ * incoming SSE re-render to never disturb what someone has typed.
  */
-export function useTradeWorkflow(): TradeWorkflow {
-  const { create, amend, transition } = useTradeMutations();
+export function useTradeForm(): TradeForm {
+  const { create, amend } = useTradeMutations();
 
   const [form, setForm] = useState<FormState | null>(null);
   const [errors, setErrors] = useState<FieldErrors>({});
   const [conflict, setConflict] = useState<VersionConflict | null>(null);
   const [submitError, setSubmitError] = useState<string | null>(null);
-  const [confirm, setConfirm] = useState<{ kind: TransitionKind; trade: TradeView } | null>(null);
-  const [auditTrade, setAuditTrade] = useState<TradeView | null>(null);
 
   const clearErrors = useCallback(() => {
     setConflict(null);
@@ -103,7 +91,7 @@ export function useTradeWorkflow(): TradeWorkflow {
     [clearErrors]
   );
 
-  const closeForm = useCallback(() => {
+  const close = useCallback(() => {
     setForm(null);
     clearErrors();
   }, [clearErrors]);
@@ -115,20 +103,13 @@ export function useTradeWorkflow(): TradeWorkflow {
     [openForm]
   );
 
-  const setFormValues = useCallback((values: FormValues) => {
+  const setValues = useCallback((values: FormValues) => {
     setForm((current) => (current ? { ...current, values } : current));
   }, []);
 
-  const startTransition = useCallback((kind: TransitionKind, trade: TradeView) => {
-    setConfirm({ kind, trade });
-  }, []);
+  const changed = useMemo(() => (form ? changedFields(form.baseline, form.values) : []), [form]);
 
-  const changed = useMemo(
-    () => (form ? changedFields(form.baseline, form.values) : []),
-    [form]
-  );
-
-  const submitForm = useCallback(async () => {
+  const submit = useCallback(async () => {
     if (!form) return;
 
     const found = validateTradeForm(form.values);
@@ -143,7 +124,7 @@ export function useTradeWorkflow(): TradeWorkflow {
       if (form.mode.kind === "amend") {
         if (changed.length === 0) {
           toast.info("Nothing to save", { description: "No field was changed." });
-          closeForm();
+          close();
           return;
         }
 
@@ -163,7 +144,7 @@ export function useTradeWorkflow(): TradeWorkflow {
       } else {
         await create.mutateAsync(command);
       }
-      closeForm();
+      close();
     } catch (error) {
       const versionConflict = asVersionConflict(error);
       if (versionConflict) {
@@ -175,21 +156,7 @@ export function useTradeWorkflow(): TradeWorkflow {
         apiErrorMessage(error, "The blotter service rejected this submission. No changes were written.")
       );
     }
-  }, [amend, changed, closeForm, create, form]);
-
-  const confirmTransition = useCallback(async () => {
-    if (!confirm) return;
-    try {
-      await transition.mutateAsync({
-        id: confirm.trade.id,
-        kind: confirm.kind,
-        expectedVersion: confirm.trade.version
-      });
-    } catch {
-      // Surfaced as a toast by the mutation's onError handler.
-    }
-    setConfirm(null);
-  }, [confirm, transition]);
+  }, [amend, changed, close, create, form]);
 
   /**
    * Rebase onto the server's version, keeping what the user typed.
@@ -200,15 +167,31 @@ export function useTradeWorkflow(): TradeWorkflow {
    */
   const reapplyConflict = useCallback((server: Trade) => {
     setConflict(null);
-    setForm((current) =>
-      current
-        ? {
-            mode: { kind: "amend", trade: toTradeView(server) },
-            baseline: toFormValues(server, new Date()),
-            values: current.values
-          }
-        : current
-    );
+    setForm((current) => {
+      if (!current) return current;
+
+      /*
+       * Both halves move onto the server's version, and only the fields the
+       * user actually edited are laid back over it. Rebasing the baseline
+       * alone would leave every untouched field holding the values the form
+       * opened with — which now differ from the newer version, so they would
+       * read as edits and be sent, reverting the concurrent amendment. That is
+       * the silent merge this whole flow exists to prevent, and it would also
+       * break the promise the conflict panel just made about how many fields
+       * the next save writes.
+       */
+      const rebased = toFormValues(server, new Date());
+      const values: FormValues = { ...rebased };
+      for (const field of changedFields(current.baseline, current.values)) {
+        Object.assign(values, { [field]: current.values[field] });
+      }
+
+      return {
+        mode: { kind: "amend", trade: toTradeView(server) },
+        baseline: rebased,
+        values
+      };
+    });
     toast.info(`Reviewing your changes against v${server.version} of ${server.tradeId}`, {
       description: "Save again to submit as the next version."
     });
@@ -216,36 +199,28 @@ export function useTradeWorkflow(): TradeWorkflow {
 
   const discardConflict = useCallback(() => {
     const reference = conflict?.currentTrade?.tradeId;
-    closeForm();
+    close();
     if (reference) {
       toast.info(`Your edit to ${reference} was discarded`, {
         description: "The blotter shows the current server version."
       });
     }
-  }, [conflict, closeForm]);
+  }, [conflict, close]);
 
   return {
-    formMode: form?.mode ?? null,
-    formValues: form?.values ?? null,
+    mode: form?.mode ?? null,
+    values: form?.values ?? null,
     changed,
     errors,
     conflict,
     submitError,
-    confirm,
-    auditTrade,
     pending: create.isPending || amend.isPending,
-    transitionPending: transition.isPending,
-    isModalOpen: Boolean(form || confirm || auditTrade),
-    setFormValues,
+    isOpen: form !== null,
+    setValues,
     startCreate,
     startAmend,
-    startTransition,
-    openAudit: setAuditTrade,
-    closeAudit: useCallback(() => setAuditTrade(null), []),
-    closeConfirm: useCallback(() => setConfirm(null), []),
-    closeForm,
-    submitForm,
-    confirmTransition,
+    close,
+    submit,
     discardConflict,
     reapplyConflict
   };
