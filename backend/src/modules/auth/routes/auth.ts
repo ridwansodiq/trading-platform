@@ -3,12 +3,12 @@ import { z } from "zod";
 import {
   apiErrorSchema,
   commonErrorResponses
-} from "../../../infrastructure/errors/error.schema.js";
-import type { LoginBody } from "../schemas/login.schema.js";
-import { loginSchema } from "../schemas/login.schema.js";
-import { currentUserResponseSchema } from "../schemas/user-response.schema.js";
-import { UnauthenticatedError } from "../errors/auth.errors.js";
-import type { AuthService } from "../services/auth.service.js";
+} from "../../../infrastructure/errors/error.schema";
+import type { LoginBody } from "../schemas/login";
+import { loginSchema } from "../schemas/login";
+import { currentUserResponseSchema } from "../schemas/user-response";
+import { UnauthenticatedError } from "../errors/auth";
+import type { AuthService } from "../services/auth";
 
 const errors = commonErrorResponses(apiErrorSchema);
 

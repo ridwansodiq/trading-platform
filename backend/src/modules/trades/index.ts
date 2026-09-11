@@ -1,9 +1,9 @@
 import type { preHandlerHookHandler } from "fastify";
-import { prisma } from "../../infrastructure/database/prisma.js";
-import { createTradeRoutes } from "./routes/trade.routes.js";
-import { TradeAuditRepository } from "./repositories/trade-audit.repository.js";
-import { TradeRepository } from "./repositories/trade.repository.js";
-import { TradeService, type TradeEventPublisher } from "./services/trade.service.js";
+import { prisma } from "../../infrastructure/database/prisma";
+import { createTradeRoutes } from "./routes/trade";
+import { TradeAuditRepository } from "./repositories/trade-audit";
+import { TradeRepository } from "./repositories/trade";
+import { TradeService, type TradeEventPublisher } from "./services/trade";
 
 /**
  * The trades module's public surface.
@@ -20,12 +20,9 @@ export function createTradesModule(options: {
   const tradeRepository = new TradeRepository(prisma, auditRepository);
   const tradeService = new TradeService(tradeRepository, auditRepository, options.events);
 
-  return {
-    tradeService,
-    routes: createTradeRoutes({ tradeService, requireAuth: options.requireAuth })
-  };
+  return { routes: createTradeRoutes({ tradeService, requireAuth: options.requireAuth }) };
 }
 
-export { tradeEventSchema } from "./schemas/trade-response.schema.js";
-export type { TradeState } from "./dtos/trade.dto.js";
-export type { TradeEventPublisher } from "./services/trade.service.js";
+export { tradeEventSchema } from "./schemas/trade-response";
+export type { TradeState } from "./types";
+export type { TradeEventPublisher } from "./services/trade";

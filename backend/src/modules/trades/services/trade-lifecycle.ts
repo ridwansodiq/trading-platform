@@ -5,14 +5,14 @@ import type {
   TradeAuditEventType,
   TradeMutation,
   TradeState
-} from "../dtos/trade.dto.js";
-import type { AmendableTradeFields } from "../dtos/amend-trade.dto.js";
+} from "../types";
+import type { AmendableTradeFields } from "../schemas/amend-trade";
 import {
   InvalidTradeError,
   InvalidTradeTransitionError,
   TradeNotFoundError,
   VersionConflictError
-} from "../errors/trade.errors.js";
+} from "../errors/trade";
 
 /**
  * The trade lifecycle rules, as pure functions.

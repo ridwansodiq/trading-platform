@@ -1,7 +1,7 @@
 import type { FastifyRequest, preHandlerHookHandler } from "fastify";
-import type { AuthenticatedUser } from "../dtos/login.dto.js";
-import { UnauthenticatedError } from "../errors/auth.errors.js";
-import type { AuthService } from "../services/auth.service.js";
+import type { AuthenticatedUser } from "../types";
+import { UnauthenticatedError } from "../errors/auth";
+import type { AuthService } from "../services/auth";
 
 declare module "fastify" {
   interface FastifyRequest {

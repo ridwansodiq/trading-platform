@@ -1,10 +1,10 @@
 import { createHash, randomBytes } from "node:crypto";
 import { hash, verify } from "@node-rs/argon2";
-import { env, isProduction } from "../../../infrastructure/config/env.js";
-import type { AuthenticatedUser, EstablishedSession, LoginDto } from "../dtos/login.dto.js";
-import { InvalidCredentialsError } from "../errors/auth.errors.js";
-import type { SessionRepository } from "../repositories/session.repository.js";
-import type { UserRepository } from "../repositories/user.repository.js";
+import { env, isProduction } from "../../../infrastructure/config/env";
+import type { AuthenticatedUser, EstablishedSession, LoginDto } from "../types";
+import { InvalidCredentialsError } from "../errors/auth";
+import type { SessionRepository } from "../repositories/session";
+import type { UserRepository } from "../repositories/user";
 
 const TOKEN_BYTES = 32;
 

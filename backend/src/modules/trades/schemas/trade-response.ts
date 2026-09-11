@@ -1,9 +1,10 @@
 import { z } from "zod";
+import { pageSchema } from "../../../infrastructure/http/pagination";
 import {
   TRADE_AUDIT_EVENT_TYPES,
   TRADE_SIDES,
   TRADE_STATUSES
-} from "../dtos/trade.dto.js";
+} from "../types";
 
 /**
  * Response shapes for the trades module, and the reusable OpenAPI components
@@ -73,14 +74,7 @@ export const tradeSchema = z
   })
   .meta({ id: "Trade" });
 
-export const tradePageSchema = z
-  .object({
-    data: z.array(tradeSchema),
-    page: z.number().int().positive(),
-    pageSize: z.number().int().positive(),
-    total: z.number().int().nonnegative()
-  })
-  .meta({ id: "TradePage" });
+export const tradePageSchema = pageSchema(tradeSchema, "TradePage");
 
 /**
  * Aggregates over every trade matching the filter, not just the current page.
@@ -122,6 +116,12 @@ export const tradeAuditEventSchema = z
   })
   .meta({ id: "TradeAuditEvent" });
 
+/**
+ * Deliberately *not* a `Page`: a trade's history is bounded by its own version
+ * count, so it is returned whole and carries no `page`/`pageSize`/`total`. The
+ * envelope exists only so the response is an object and can grow a field later
+ * without breaking clients. Give it real pagination before reusing the name.
+ */
 export const tradeAuditPageSchema = z
   .object({ data: z.array(tradeAuditEventSchema) })
   .meta({ id: "TradeAuditPage" });

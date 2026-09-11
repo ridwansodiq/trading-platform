@@ -1,17 +1,17 @@
 import { randomBytes, randomUUID } from "node:crypto";
-import type { AmendTradeDto } from "../dtos/amend-trade.dto.js";
-import type { CreateTradeDto } from "../dtos/create-trade.dto.js";
-import type { ExposureDto, ListFilterOptionsDto, ListTradesDto } from "../dtos/list-trades.dto.js";
-import type { TradeAuditEventRecord, TradeState } from "../dtos/trade.dto.js";
-import type { TransitionTradeDto } from "../dtos/transition-trade.dto.js";
-import { TradeAlreadyExistsError, TradeNotFoundError } from "../errors/trade.errors.js";
-import type { TradeAuditRepository } from "../repositories/trade-audit.repository.js";
+import type { AmendTradeDto } from "../schemas/amend-trade";
+import type { CreateTradeDto } from "../schemas/create-trade";
+import type { ExposureDto, ListFilterOptionsDto, ListTradesDto } from "../schemas/list-trades";
+import type { TradeAuditEventRecord, TradeState } from "../types";
+import type { TransitionTradeDto } from "../schemas/transition-trade";
+import { TradeAlreadyExistsError, TradeNotFoundError } from "../errors/trade";
+import type { TradeAuditRepository } from "../repositories/trade-audit";
 import type {
   TradeExposure,
   TradePage,
   TradeRepository
-} from "../repositories/trade.repository.js";
-import { decideAmend, decideCreate, decideTransition } from "./trade-lifecycle.js";
+} from "../repositories/trade";
+import { decideAmend, decideCreate, decideTransition } from "./trade-lifecycle";
 
 /** Notified after a mutation commits. Kept as a narrow port so the service does
  * not depend on the SSE transport. */

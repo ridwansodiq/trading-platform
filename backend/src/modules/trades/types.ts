@@ -2,10 +2,9 @@
  * The trade vocabulary, defined once.
  *
  * These const arrays are the single source for the module's enums: the Zod
- * schemas build their `z.enum` from them, and `mappers/trade.mapper.ts` asserts
- * at compile time that they still match Prisma's generated enums. Previously
- * the same three value sets were written out by hand in the schema, the DTO and
- * the database schema, with nothing forcing them to agree.
+ * schemas build their `z.enum` from them, and `mappers/trade.ts` asserts
+ * at compile time that they still match Prisma's generated enums, so the API
+ * contract and the database can never disagree about a value silently.
  */
 
 export const TRADE_SIDES = ["BUY", "SELL"] as const;

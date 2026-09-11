@@ -1,4 +1,4 @@
-import { ApplicationError } from "../../../infrastructure/errors/application-error.js";
+import { ApplicationError } from "../../../infrastructure/errors/application-error";
 
 /**
  * Deliberately generic: the same error for an unknown email and a wrong

@@ -2,12 +2,13 @@
   "extends": "../tsconfig.base.json",
   "compilerOptions": {
     "target": "ES2022",
-    "module": "NodeNext",
-    "moduleResolution": "NodeNext",
+    "module": "ESNext",
+    "moduleResolution": "Bundler",
     "outDir": "dist",
     "rootDir": "src",
     "types": ["node"]
   },
+  "//2": "Bundler resolution so relative imports need no extension. `tsc` does not rewrite specifiers, so `tsc-alias --resolve-full-paths` appends the `.js` that Node ESM requires at runtime — see the build script.",
   "//": "Only `src` is compiled, so the entry point emits to dist/server.js. Scripts, seeds and config are type-checked by tsconfig.tools.json but never built.",
   "include": ["src"],
   "exclude": ["src/**/*.test.ts"]

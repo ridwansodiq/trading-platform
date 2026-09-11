@@ -9,3 +9,7 @@ coverage/
 
 # TypeScript incremental build cache
 *.tsbuildinfo
+
+# Working notes, not deliverables
+AGENTS.md
+IMPLEMENTATION_PLAN.md

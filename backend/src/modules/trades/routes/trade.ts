@@ -1,29 +1,29 @@
 import type { FastifyPluginAsync, FastifyRequest, preHandlerHookHandler } from "fastify";
 import { z } from "zod";
-import { commonErrorResponses } from "../../../infrastructure/errors/error.schema.js";
-import type { AmendTradeBody } from "../schemas/amend-trade.schema.js";
-import { amendTradeSchema } from "../schemas/amend-trade.schema.js";
-import type { CreateTradeBody } from "../schemas/create-trade.schema.js";
-import { createTradeSchema } from "../schemas/create-trade.schema.js";
+import { commonErrorResponses } from "../../../infrastructure/errors/error.schema";
+import type { AmendTradeBody } from "../schemas/amend-trade";
+import { amendTradeSchema } from "../schemas/amend-trade";
+import type { CreateTradeBody } from "../schemas/create-trade";
+import { createTradeSchema } from "../schemas/create-trade";
 import {
   exposureQuerySchema,
   filterOptionsQuerySchema,
   listTradesQuerySchema,
   tradeFilterOptionsSchema
-} from "../schemas/list-trades.schema.js";
-import { tradeErrorSchema } from "../schemas/trade-error.schema.js";
+} from "../schemas/list-trades";
+import { tradeErrorSchema } from "../schemas/trade-error";
 import {
   tradeAuditPageSchema,
   tradeExposureSchema,
   tradePageSchema,
   tradeSchema
-} from "../schemas/trade-response.schema.js";
-import type { TransitionTradeBody } from "../schemas/transition-trade.schema.js";
-import { transitionTradeSchema } from "../schemas/transition-trade.schema.js";
-import type { AmendableTradeFields } from "../dtos/amend-trade.dto.js";
-import type { ExposureDto, ListFilterOptionsDto, ListTradesDto } from "../dtos/list-trades.dto.js";
-import type { TradeActor } from "../dtos/trade.dto.js";
-import type { TradeService } from "../services/trade.service.js";
+} from "../schemas/trade-response";
+import type { TransitionTradeBody } from "../schemas/transition-trade";
+import { transitionTradeSchema } from "../schemas/transition-trade";
+import type { AmendableTradeFields } from "../schemas/amend-trade";
+import type { ExposureDto, ListFilterOptionsDto, ListTradesDto } from "../schemas/list-trades";
+import type { TradeActor } from "../types";
+import type { TradeService } from "../services/trade";
 
 const security = [{ sessionCookie: [] }];
 const idParamsSchema = z.object({ id: z.string().uuid() });

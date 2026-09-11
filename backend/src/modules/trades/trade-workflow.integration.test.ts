@@ -2,8 +2,8 @@ import { randomUUID } from "node:crypto";
 import { hash } from "@node-rs/argon2";
 import type { FastifyInstance } from "fastify";
 import { afterAll, afterEach, beforeAll, describe, expect, it } from "vitest";
-import { buildApp } from "../../app.js";
-import { prisma } from "../../infrastructure/database/prisma.js";
+import { buildApp } from "../../app";
+import { prisma } from "../../infrastructure/database/prisma";
 
 /**
  * The suite provisions its own user and tags every trade it books with a

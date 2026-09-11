@@ -11,7 +11,7 @@ import type {
   TradeSide,
   TradeState,
   TradeStatus
-} from "../dtos/trade.dto.js";
+} from "../types";
 
 /**
  * Translation between Prisma rows and the module's own trade representation.

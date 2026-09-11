@@ -1,5 +1,5 @@
-import { ApplicationError } from "../../../infrastructure/errors/application-error.js";
-import type { TradeState, TradeStatus } from "../dtos/trade.dto.js";
+import { ApplicationError } from "../../../infrastructure/errors/application-error";
+import type { TradeState, TradeStatus } from "../types";
 
 export class TradeNotFoundError extends ApplicationError {
   readonly code = "TRADE_NOT_FOUND";

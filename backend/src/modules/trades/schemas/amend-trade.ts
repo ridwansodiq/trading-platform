@@ -1,6 +1,13 @@
-import type { z } from "zod";
-import type { amendTradeSchema } from "../schemas/amend-trade.schema.js";
-import type { TradeActor } from "./trade.dto.js";
+import { z } from "zod";
+import { createTradeSchema } from "./create-trade";
+import type { TradeActor } from "../types";
+
+export const amendTradeSchema = createTradeSchema
+  .partial()
+  .extend({ expectedVersion: z.number().int().positive() })
+  .meta({ id: "AmendTradeCommand" });
+
+export type AmendTradeBody = z.infer<typeof amendTradeSchema>;
 
 type AmendCommand = Omit<z.infer<typeof amendTradeSchema>, "expectedVersion">;
 

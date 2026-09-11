@@ -1,29 +1,26 @@
 import { Prisma, type PrismaClient, type Trade as TradeRow } from "@prisma/client";
+import type { Page } from "../../../infrastructure/http/pagination";
 import type {
   ExposureDto,
   ListFilterOptionsDto,
   ListTradesDto,
   TradeFilterField,
   TradeSortKey
-} from "../dtos/list-trades.dto.js";
-import type { MutationDecision, TradeState } from "../dtos/trade.dto.js";
+} from "../schemas/list-trades";
+import type { MutationDecision, TradeState } from "../types";
 import {
   InvalidTradeTransitionError,
   TradeAlreadyExistsError,
   TradeNotFoundError,
   VersionConflictError
-} from "../errors/trade.errors.js";
-import { toTradeCreateData, toTradeState, toTradeUpdateData } from "../mappers/trade.mapper.js";
-import type { TradeAuditRepository } from "./trade-audit.repository.js";
+} from "../errors/trade";
+import { toTradeCreateData, toTradeState, toTradeUpdateData } from "../mappers/trade";
+import type { TradeAuditRepository } from "./trade-audit";
 
 const UNIQUE_CONSTRAINT_VIOLATION = "P2002";
 
-export type TradePage = {
-  data: TradeState[];
-  page: number;
-  pageSize: number;
-  total: number;
-};
+/** One page of trades: the envelope is shared, only the item type is ours. */
+export type TradePage = Page<TradeState>;
 
 export type TradeExposure = {
   tradesInScope: number;

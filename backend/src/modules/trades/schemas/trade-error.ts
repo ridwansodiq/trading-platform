@@ -1,6 +1,6 @@
 import { z } from "zod";
-import { apiErrorSchema } from "../../../infrastructure/errors/error.schema.js";
-import { tradeSchema } from "./trade-response.schema.js";
+import { apiErrorSchema } from "../../../infrastructure/errors/error.schema";
+import { tradeSchema } from "./trade-response";
 
 /**
  * Trade errors extend the shared envelope with concurrency context, so a `409`

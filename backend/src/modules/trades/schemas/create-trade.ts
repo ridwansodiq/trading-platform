@@ -1,5 +1,6 @@
 import { z } from "zod";
-import { priceSchema, quantitySchema, tradeSideSchema } from "./trade-response.schema.js";
+import { priceSchema, quantitySchema, tradeSideSchema } from "./trade-response";
+import type { TradeActor } from "../types";
 
 /** `trader` is absent by design — it comes from the authenticated session. */
 export const createTradeSchema = z
@@ -15,3 +16,11 @@ export const createTradeSchema = z
   .meta({ id: "CreateTradeCommand" });
 
 export type CreateTradeBody = z.infer<typeof createTradeSchema>;
+
+/**
+ * The validated command plus the one thing the client is never allowed to
+ * supply: who is booking the trade.
+ */
+export type CreateTradeDto = CreateTradeBody & {
+  actor: TradeActor;
+};

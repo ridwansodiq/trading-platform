@@ -1,6 +1,6 @@
 import type { Prisma, PrismaClient } from "@prisma/client";
-import { toJsonSnapshot } from "../mappers/trade.mapper.js";
-import type { TradeAuditEventDraft, TradeAuditEventRecord, TradeState } from "../dtos/trade.dto.js";
+import { toJsonSnapshot } from "../mappers/trade";
+import type { TradeAuditEventDraft, TradeAuditEventRecord, TradeState } from "../types";
 
 /**
  * The append-only audit log.

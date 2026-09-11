@@ -11,7 +11,7 @@ import tseslint from "typescript-eslint";
  *
  *  1. `no-restricted-imports` patterns match the *import specifier text*, not
  *     the resolved path. `**\/modules/auth/**` will never match
- *     `../../auth/services/auth.service.js`, so patterns are written against
+ *     `../../auth/services/auth.service`, so patterns are written against
  *     the relative forms the code actually uses.
  *  2. In flat config, a later block *replaces* a rule for overlapping files
  *     instead of merging with it. So every file pattern must carry its complete
@@ -51,7 +51,7 @@ const noRoutes = {
   message: "Inner layers must not import routes."
 };
 
-/** Anything below the barrel of another module. `../../auth/index.js` is fine. */
+/** Anything below the barrel of another module. `../../auth/index` is fine. */
 const noAuthInternals = {
   group: ["**/auth/*/*", "**/auth/*/**", "../auth/*/**", "../../auth/*/**"],
   message:
@@ -120,8 +120,7 @@ export default tseslint.config(
     ignores: [
       "**/dist/**",
       "**/node_modules/**",
-      "frontend/src/api/generated/**",
-      "design_handoff_fusion_trade_blotter/**"
+      "frontend/src/api/generated/**"
     ]
   },
 
@@ -159,7 +158,7 @@ export default tseslint.config(
   },
   {
     files: [
-      "backend/src/modules/trades/dtos/**/*.ts",
+      "backend/src/modules/trades/types.ts",
       "backend/src/modules/trades/errors/**/*.ts",
       "backend/src/modules/trades/mappers/**/*.ts",
       "backend/src/modules/trades/schemas/**/*.ts"

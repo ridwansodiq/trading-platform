@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
-import { decideAmend, decideCreate, decideTransition } from "./trade-lifecycle.js";
-import { VersionConflictError } from "../errors/trade.errors.js";
-import type { TradeActor, TradeState } from "../dtos/trade.dto.js";
+import { decideAmend, decideCreate, decideTransition } from "./trade-lifecycle";
+import { VersionConflictError } from "../errors/trade";
+import type { TradeActor, TradeState } from "../types";
 
 const actor: TradeActor = {
   id: "4a738e88-b7b4-4f6d-bc7f-69a76ddb2e1a",

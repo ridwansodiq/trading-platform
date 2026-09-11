@@ -1,10 +1,10 @@
-import { env } from "../../infrastructure/config/env.js";
-import { prisma } from "../../infrastructure/database/prisma.js";
-import { createAuthMiddleware } from "./middleware/require-auth.js";
-import { createAuthRoutes } from "./routes/auth.routes.js";
-import { SessionRepository } from "./repositories/session.repository.js";
-import { UserRepository } from "./repositories/user.repository.js";
-import { AuthService } from "./services/auth.service.js";
+import { env } from "../../infrastructure/config/env";
+import { prisma } from "../../infrastructure/database/prisma";
+import { createAuthMiddleware } from "./middleware/require-auth";
+import { createAuthRoutes } from "./routes/auth";
+import { SessionRepository } from "./repositories/session";
+import { UserRepository } from "./repositories/user";
+import { AuthService } from "./services/auth";
 
 /**
  * The auth module's public surface: its routes, the middleware other modules
@@ -40,4 +40,4 @@ export function createAuthModule() {
   };
 }
 
-export type { AuthenticatedUser } from "./dtos/login.dto.js";
+export type { AuthenticatedUser } from "./types";

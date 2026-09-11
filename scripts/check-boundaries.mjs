@@ -26,77 +26,77 @@ const CASES = [
   // ── Backend: trades module ───────────────────────────────────────────────
   {
     label: "trade routes -> Prisma",
-    near: "backend/src/modules/trades/routes/trade.routes.ts",
+    near: "backend/src/modules/trades/routes/trade.ts",
     code: 'import { PrismaClient } from "@prisma/client"; void PrismaClient;'
   },
   {
     label: "trade routes -> repository",
-    near: "backend/src/modules/trades/routes/trade.routes.ts",
-    code: 'import { TradeRepository } from "../repositories/trade.repository.js"; void TradeRepository;'
+    near: "backend/src/modules/trades/routes/trade.ts",
+    code: 'import { TradeRepository } from "../repositories/trade"; void TradeRepository;'
   },
   {
     label: "trade routes -> auth internals",
-    near: "backend/src/modules/trades/routes/trade.routes.ts",
-    code: 'import { AuthService } from "../../auth/services/auth.service.js"; void AuthService;'
+    near: "backend/src/modules/trades/routes/trade.ts",
+    code: 'import { AuthService } from "../../auth/services/auth"; void AuthService;'
   },
   {
     label: "trade service -> Fastify",
-    near: "backend/src/modules/trades/services/trade.service.ts",
+    near: "backend/src/modules/trades/services/trade.ts",
     code: 'import type { FastifyRequest } from "fastify"; export type Probe = FastifyRequest;'
   },
   {
     label: "trade service -> Prisma",
-    near: "backend/src/modules/trades/services/trade.service.ts",
-    code: 'import { prisma } from "../../../infrastructure/database/prisma.js"; void prisma;'
+    near: "backend/src/modules/trades/services/trade.ts",
+    code: 'import { prisma } from "../../../infrastructure/database/prisma"; void prisma;'
   },
   {
     label: "trade service -> auth module",
-    near: "backend/src/modules/trades/services/trade.service.ts",
-    code: 'import { createAuthModule } from "../../auth/index.js"; void createAuthModule;'
+    near: "backend/src/modules/trades/services/trade.ts",
+    code: 'import { createAuthModule } from "../../auth/index"; void createAuthModule;'
   },
   {
     label: "trade repository -> Fastify",
-    near: "backend/src/modules/trades/repositories/trade.repository.ts",
+    near: "backend/src/modules/trades/repositories/trade.ts",
     code: 'import type { FastifyReply } from "fastify"; export type Probe = FastifyReply;'
   },
   {
     label: "trade repository -> service",
-    near: "backend/src/modules/trades/repositories/trade.repository.ts",
-    code: 'import { TradeService } from "../services/trade.service.js"; void TradeService;'
+    near: "backend/src/modules/trades/repositories/trade.ts",
+    code: 'import { TradeService } from "../services/trade"; void TradeService;'
   },
   {
     label: "trade schemas -> Fastify",
-    near: "backend/src/modules/trades/schemas/trade-response.schema.ts",
+    near: "backend/src/modules/trades/schemas/trade-response.ts",
     code: 'import type { FastifyRequest } from "fastify"; export type Probe = FastifyRequest;'
   },
 
   // ── Backend: auth module ─────────────────────────────────────────────────
   {
     label: "auth routes -> Prisma",
-    near: "backend/src/modules/auth/routes/auth.routes.ts",
+    near: "backend/src/modules/auth/routes/auth.ts",
     code: 'import { PrismaClient } from "@prisma/client"; void PrismaClient;'
   },
   {
     label: "auth service -> Fastify",
-    near: "backend/src/modules/auth/services/auth.service.ts",
+    near: "backend/src/modules/auth/services/auth.ts",
     code: 'import type { FastifyRequest } from "fastify"; export type Probe = FastifyRequest;'
   },
   {
     label: "auth repository -> service",
-    near: "backend/src/modules/auth/repositories/user.repository.ts",
-    code: 'import { AuthService } from "../services/auth.service.js"; void AuthService;'
+    near: "backend/src/modules/auth/repositories/user.ts",
+    code: 'import { AuthService } from "../services/auth"; void AuthService;'
   },
 
   // ── Backend: cross-cutting ───────────────────────────────────────────────
   {
     label: "realtime -> module service",
     near: "backend/src/realtime/sse/trade-events.ts",
-    code: 'import { TradeService } from "../../modules/trades/services/trade.service.js"; void TradeService;'
+    code: 'import { TradeService } from "../../modules/trades/services/trade"; void TradeService;'
   },
   {
     label: "infrastructure -> module",
     near: "backend/src/infrastructure/logging/logger.ts",
-    code: 'import { TradeService } from "../../modules/trades/services/trade.service.js"; void TradeService;'
+    code: 'import { TradeService } from "../../modules/trades/services/trade"; void TradeService;'
   },
 
   // ── Frontend: feature isolation ──────────────────────────────────────────
