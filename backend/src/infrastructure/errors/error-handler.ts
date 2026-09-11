@@ -3,8 +3,8 @@ import {
   hasZodFastifySchemaValidationErrors,
   isResponseSerializationError
 } from "fastify-type-provider-zod";
-import { isApplicationError } from "./application-error.js";
-import type { ApiErrorBody } from "./error.schema.js";
+import { isApplicationError } from "./application-error";
+import type { ApiErrorBody } from "./error.schema";
 
 /**
  * The one place an error becomes an HTTP response.

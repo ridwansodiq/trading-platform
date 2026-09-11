@@ -12,14 +12,14 @@ import {
   serializerCompiler,
   validatorCompiler
 } from "fastify-type-provider-zod";
-import { apiDocsEnabled, env, isProduction } from "./infrastructure/config/env.js";
-import { registerErrorHandler } from "./infrastructure/errors/error-handler.js";
-import { loggerOptions } from "./infrastructure/logging/logger.js";
-import { createAuthModule } from "./modules/auth/index.js";
-import { createTradesModule } from "./modules/trades/index.js";
-import { SseBroker } from "./realtime/sse/sse-broker.js";
-import { createSseRoutes } from "./realtime/sse/sse.routes.js";
-import { createTradeEventPublisher } from "./realtime/sse/trade-events.js";
+import { apiDocsEnabled, env, isProduction } from "./infrastructure/config/env";
+import { registerErrorHandler } from "./infrastructure/errors/error-handler";
+import { loggerOptions } from "./infrastructure/logging/logger";
+import { createAuthModule } from "./modules/auth/index";
+import { createTradesModule } from "./modules/trades/index";
+import { SseBroker } from "./realtime/sse/sse-broker";
+import { createSseRoutes } from "./realtime/sse/sse.routes";
+import { createTradeEventPublisher } from "./realtime/sse/trade-events";
 
 const healthSchema = z.object({ status: z.literal("ok") }).meta({ id: "HealthStatus" });
 
@@ -87,7 +87,7 @@ export async function buildApp() {
    * login route's 10/minute becomes 10 per instance. Running replicas means
    * giving this plugin a shared Redis store, not raising the numbers.
    */
-  await app.register(rateLimit, { max: 200, timeWindow: "1 minute" });
+  await app.register(rateLimit, { max: 500, timeWindow: "1 minute" });
 
   registerErrorHandler(app);
 

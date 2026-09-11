@@ -1,4 +1,4 @@
-import { env, isTest } from "../config/env.js";
+import { env, isTest } from "../config/env";
 
 /**
  * Fastify logger options. Silent under test so suite output stays readable.

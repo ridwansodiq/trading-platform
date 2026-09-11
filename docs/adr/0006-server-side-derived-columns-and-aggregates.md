@@ -35,10 +35,21 @@ Monetary aggregates are returned as decimal strings. A sum of `quantity * price`
 across a book can exceed the range a JSON number represents exactly, and an
 exposure figure that is approximately right is worse than useless.
 
+That last point also settles how the strip stays current: it refetches on the
+same signal as the table rather than being incremented client-side. An
+incremented figure would have to reproduce the SQL exactly — including that the
+notional sums carry no status predicate, so an execution shifts a bucket and
+leaves exposure unchanged — and any drift between the two would show up as a
+number that is approximately right, which for exposure is worse than useless.
+Refetching costs a request and cannot drift. See the trade-off recorded in
+ADR 0003 for what that costs at scale.
+
 ## Consequences
 
 The repository holds hand-written SQL, so its column list and the Prisma model
-have to be kept in step — `TRADE_COLUMNS` exists to make that one edit. In
-exchange, every column the table offers to sort by actually sorts the whole
-result set, and every figure in the exposure strip describes the same set of
-trades as the rows beneath it.
+have to be kept in step — `TRADE_COLUMNS` exists to make that one edit. Keeping
+the aggregate on the server means there is no second implementation of these
+sums to hold in step with it, at the cost of a request whenever the figures may
+have moved. In exchange, every column the table offers to sort by actually
+sorts the whole result set, and every figure in the exposure strip describes the
+same set of trades as the rows beneath it.

@@ -2,8 +2,8 @@ import "dotenv/config";
 import { mkdir, writeFile } from "node:fs/promises";
 import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
-import { buildApp } from "../src/app.js";
-import { prisma } from "../src/infrastructure/database/prisma.js";
+import { buildApp } from "../src/app";
+import { prisma } from "../src/infrastructure/database/prisma";
 
 /**
  * Writes the OpenAPI document the frontend client is generated from.

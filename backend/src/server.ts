@@ -1,6 +1,6 @@
-import { buildApp } from "./app.js";
-import { env } from "./infrastructure/config/env.js";
-import { prisma } from "./infrastructure/database/prisma.js";
+import { buildApp } from "./app";
+import { env } from "./infrastructure/config/env";
+import { prisma } from "./infrastructure/database/prisma";
 
 /** Past this, stop waiting for in-flight work and exit anyway. */
 const SHUTDOWN_TIMEOUT_MS = 10_000;

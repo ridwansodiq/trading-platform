@@ -1,6 +1,6 @@
 import { randomUUID } from "node:crypto";
-import type { TradeEventPublisher, TradeState } from "../../modules/trades/index.js";
-import type { SseBroker } from "./sse-broker.js";
+import type { TradeEventPublisher, TradeState } from "../../modules/trades/index";
+import type { SseBroker } from "./sse-broker";
 
 export const TRADE_UPDATE_EVENT = "trade-update";
 

@@ -1,8 +1,8 @@
 import type { FastifyPluginAsync, FastifyRequest, preHandlerHookHandler } from "fastify";
-import { env } from "../../infrastructure/config/env.js";
-import { apiErrorSchema } from "../../infrastructure/errors/error.schema.js";
-import { tradeEventSchema } from "../../modules/trades/index.js";
-import type { SseBroker } from "./sse-broker.js";
+import { env } from "../../infrastructure/config/env";
+import { apiErrorSchema } from "../../infrastructure/errors/error.schema";
+import { tradeEventSchema } from "../../modules/trades/index";
+import type { SseBroker } from "./sse-broker";
 
 /**
  * Liveness cadence. Short enough that a client can call a silent connection
