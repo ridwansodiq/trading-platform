@@ -2,6 +2,7 @@ import { Moon, Sun } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { UserMenu } from "@/components/layout/user-menu";
 import { cn } from "@/lib/utils";
+import type { ReactNode } from "react";
 import type { Theme } from "@/hooks/use-theme";
 import type { ConnectionState, SessionUser } from "@/types/trade";
 
@@ -22,9 +23,18 @@ type Props = {
   theme: Theme;
   onToggleTheme: () => void;
   onSignOut: () => void;
+  /** Feature-owned account-menu entries, passed straight through. */
+  menuItems?: ReactNode;
 };
 
-export function TopBar({ user, connection, theme, onToggleTheme, onSignOut }: Props) {
+export function TopBar({
+  user,
+  connection,
+  theme,
+  onToggleTheme,
+  onSignOut,
+  menuItems
+}: Props) {
   const state = CONNECTION[connection];
 
   return (
@@ -63,7 +73,7 @@ export function TopBar({ user, connection, theme, onToggleTheme, onSignOut }: Pr
           {theme === "dark" ? <Sun size={14} /> : <Moon size={14} />}
         </Button>
 
-        <UserMenu user={user} onSignOut={onSignOut} />
+        <UserMenu user={user} onSignOut={onSignOut} menuItems={menuItems} />
       </div>
     </header>
   );

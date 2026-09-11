@@ -7,11 +7,22 @@ import {
   DropdownMenuTrigger
 } from "@/components/ui/dropdown-menu";
 import { initials } from "@/lib/format";
+import type { ReactNode } from "react";
 import type { SessionUser } from "@/types/trade";
 
-type Props = { user: SessionUser; onSignOut: () => void };
+type Props = {
+  user: SessionUser;
+  onSignOut: () => void;
+  /**
+   * Feature-owned entries, rendered above the account actions.
+   *
+   * A slot rather than an import: shared chrome may not reach into a feature,
+   * so whatever knows about trades passes its own item down instead.
+   */
+  menuItems?: ReactNode;
+};
 
-export function UserMenu({ user, onSignOut }: Props) {
+export function UserMenu({ user, onSignOut, menuItems }: Props) {
   return (
     <DropdownMenu>
       <DropdownMenuTrigger
@@ -32,6 +43,12 @@ export function UserMenu({ user, onSignOut }: Props) {
           <p className="mt-1 text-mini text-ink-5">Desk {user.desk}</p>
         </div>
         <DropdownMenuSeparator />
+        {menuItems ? (
+          <>
+            {menuItems}
+            <DropdownMenuSeparator />
+          </>
+        ) : null}
         <DropdownMenuItem onSelect={onSignOut} className="text-cell-2">
           <LogOut size={14} />
           Log out
