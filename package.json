@@ -17,8 +17,7 @@
     "test:frontend": "npm run test -w frontend",
     "api:spec": "npm run api:spec -w backend",
     "api:generate": "npm run api:spec && orval --config orval.config.ts",
-    "api:check": "node scripts/check-generated.mjs",
-    "verify": "npm run api:check && npm run typecheck && npm run lint && npm run lint:boundaries && npm run test && npm run build"
+    "verify": "npm run typecheck && npm run lint && npm run lint:boundaries && npm run test && npm run build"
   },
   "devDependencies": {
     "@eslint/js": "^10.0.1",

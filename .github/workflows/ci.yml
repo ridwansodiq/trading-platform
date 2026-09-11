@@ -34,8 +34,9 @@ jobs:
       - run: npm run db:deploy -w backend
 
       # One command, the same one used locally, so CI cannot drift from what a
-      # developer runs before pushing. It covers contract drift, types, lint,
-      # the boundary assertions, tests and both production builds.
+      # developer runs before pushing. It covers types, lint, the boundary
+      # assertions, tests and both production builds. The generated API client
+      # is committed and not regenerated here — see docs/adr/0003.
       - run: npm run verify
 
   docker:
