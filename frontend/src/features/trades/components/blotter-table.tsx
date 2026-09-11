@@ -1,49 +1,21 @@
-import { Check, ChevronDown, ChevronUp, Clock3, MoreHorizontal, Pencil, X } from "lucide-react";
+import { useCallback, useMemo } from "react";
+import { ChevronDown, ChevronUp } from "lucide-react";
+import { useTable, type SortingState } from "@tanstack/react-table";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Button } from "@/components/ui/button";
 import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuLabel,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger
-} from "@/components/ui/dropdown-menu";
-import { SideTag, SignedValue, StatusPill } from "@/features/trades/components/trade-badges";
-import { formatPrice, formatQuantity, formatTradeTimestamp } from "@/lib/format";
+  blotterColumns,
+  blotterFeatures,
+  type BlotterColumnMeta,
+  type RowAction
+} from "@/features/trades/components/blotter-columns";
 import { cn } from "@/lib/utils";
 import type { SortKey, TableState, TradeSort, TradeView } from "@/types/trade";
 
-export type RowAction = "amend" | "execute" | "cancel" | "audit";
-
-type Column = {
-  key: SortKey | null;
-  label: string;
-  align?: "right";
-  className?: string;
-};
-
-/** Column order and alignment come straight from the design's table spec. */
-const COLUMNS: readonly Column[] = [
-  { key: "tradeId", label: "Trade ID" },
-  { key: "symbol", label: "Symbol" },
-  { key: "side", label: "Side" },
-  { key: "quantity", label: "Quantity", align: "right" },
-  { key: "price", label: "Price", align: "right" },
-  { key: "notional", label: "Notional", align: "right" },
-  { key: "signedQuantity", label: "Signed Qty", align: "right" },
-  { key: "signedNotional", label: "Signed Notional", align: "right" },
-  { key: "trader", label: "Trader" },
-  { key: "book", label: "Book" },
-  { key: "counterparty", label: "Counterparty" },
-  { key: "tradeTimestamp", label: "Trade Time" },
-  { key: "status", label: "Status" },
-  { key: "version", label: "Version", align: "right" },
-  { key: null, label: "Actions", align: "right" }
-];
+export type { RowAction };
 
 type Props = {
-  views: readonly TradeView[];
+  views: TradeView[];
   state: TableState;
   sort: TradeSort;
   onSortChange: (key: SortKey) => void;
@@ -66,86 +38,23 @@ const STICKY_LEFT_CELL =
 const STICKY_RIGHT_CELL =
   "sticky right-0 z-10 shadow-[-2px_0_0_0_var(--line-soft)] group-hover:bg-surface-muted";
 
-function SortIndicator({ active, direction }: { active: boolean; direction: TradeSort["direction"] }) {
-  if (!active) return null;
-  const Icon = direction === "asc" ? ChevronUp : ChevronDown;
-  return <Icon size={12} className="text-violet" aria-hidden />;
+function stickyCellClass(sticky: BlotterColumnMeta["sticky"]): string | undefined {
+  if (sticky === "left") return STICKY_LEFT_CELL;
+  if (sticky === "right") return STICKY_RIGHT_CELL;
+  return undefined;
 }
 
-function RowActionsMenu({
-  trade,
-  reason,
-  blocked,
-  onAction
-}: {
-  trade: TradeView;
-  /** Why the lifecycle actions are unavailable, or null when they are. */
-  reason: string | null;
-  blocked: boolean;
-  onAction: (action: RowAction, trade: TradeView) => void;
-}) {
-  return (
-    <DropdownMenu>
-      <DropdownMenuTrigger asChild>
-        <Button
-          type="button"
-          variant="ghost"
-          size="icon"
-          aria-label={`Actions for ${trade.tradeId}`}
-          title={`Actions for ${trade.tradeId}`}
-          className="size-[26px] text-ink-4 hover:bg-surface-muted-2 hover:text-ink data-[state=open]:bg-surface-muted-2 data-[state=open]:text-ink"
-        >
-          <MoreHorizontal size={15} />
-        </Button>
-      </DropdownMenuTrigger>
+function stickyHeaderClass(sticky: BlotterColumnMeta["sticky"]): string | undefined {
+  if (sticky === "left") return "sticky left-0 z-30 bg-surface-muted";
+  if (sticky === "right")
+    return "sticky right-0 z-30 bg-surface-muted shadow-[-2px_0_0_0_var(--line-soft)]";
+  return undefined;
+}
 
-      <DropdownMenuContent align="end" className="w-52">
-        {/* Stated once at the top rather than repeated on each disabled row. */}
-        {reason && (
-          <>
-            <DropdownMenuLabel className="text-mini-2 font-normal text-ink-5">
-              {reason}
-            </DropdownMenuLabel>
-            <DropdownMenuSeparator />
-          </>
-        )}
-
-        <DropdownMenuItem
-          disabled={blocked}
-          onSelect={() => onAction("amend", trade)}
-          className="text-cell-2"
-        >
-          <Pencil size={13} />
-          Amend
-        </DropdownMenuItem>
-        <DropdownMenuItem
-          disabled={blocked}
-          onSelect={() => onAction("execute", trade)}
-          className="text-cell-2"
-        >
-          <Check size={14} />
-          Execute
-        </DropdownMenuItem>
-        <DropdownMenuItem
-          disabled={blocked}
-          variant="destructive"
-          onSelect={() => onAction("cancel", trade)}
-          className="text-cell-2"
-        >
-          <X size={14} />
-          Cancel
-        </DropdownMenuItem>
-
-        <DropdownMenuSeparator />
-
-        {/* Audit is always available, including for terminal trades. */}
-        <DropdownMenuItem onSelect={() => onAction("audit", trade)} className="text-cell-2">
-          <Clock3 size={13} />
-          Audit history
-        </DropdownMenuItem>
-      </DropdownMenuContent>
-    </DropdownMenu>
-  );
+function SortIndicator({ direction }: { direction: false | "asc" | "desc" }) {
+  if (!direction) return null;
+  const Icon = direction === "asc" ? ChevronUp : ChevronDown;
+  return <Icon size={12} className="text-violet" aria-hidden />;
 }
 
 export function BlotterTable({
@@ -162,58 +71,104 @@ export function BlotterTable({
   onRetry,
   onGoToLastPage
 }: Props) {
+  const sorting = useMemo<SortingState>(
+    () => [{ id: sort.key, desc: sort.direction === "desc" }],
+    [sort]
+  );
+
+  /*
+   * A header toggle only names the column. Which direction that produces is
+   * `useBlotterQueryState`'s decision, because the sort lives in the URL and
+   * has to survive a reload, a shared link and the back button — so the table
+   * never owns the slice it renders.
+   */
+  const handleSortingChange = useCallback(
+    (updater: SortingState | ((previous: SortingState) => SortingState)) => {
+      const next = typeof updater === "function" ? updater(sorting) : updater;
+      const key = next[0]?.id;
+      if (key) onSortChange(key as SortKey);
+    },
+    [sorting, onSortChange]
+  );
+
+  const meta = useMemo(() => ({ cursorId, onAction }), [cursorId, onAction]);
+
+  const table = useTable({
+    features: blotterFeatures,
+    columns: blotterColumns,
+    data: views,
+    /* Keyed by trade id so a refetch reuses a row rather than rebuilding it. */
+    getRowId: (trade) => trade.id,
+    /*
+     * The server sorts and pages: this page arrives in its final order, and
+     * paging is the footer's, so no pagination feature is registered here.
+     */
+    manualSorting: true,
+    /* A blotter is always sorted by something — there is no third click. */
+    enableSortingRemoval: false,
+    enableMultiSort: false,
+    state: { sorting },
+    onSortingChange: handleSortingChange,
+    meta
+  });
+
+  const columnCount = table.getAllLeafColumns().length;
+
   return (
     <div className="overflow-hidden rounded-lg border border-line bg-surface">
       <div className="scrollbar-thin overflow-auto">
         <table className="w-full min-w-[1600px] border-collapse text-left">
           <thead className="sticky top-0 z-20 bg-surface-muted">
-            <tr>
-              {COLUMNS.map((column, index) => {
-                const active = column.key !== null && sort.key === column.key;
-                const sortable = column.key !== null;
-                return (
-                  <th
-                    key={column.label}
-                    scope="col"
-                    aria-sort={
-                      active ? (sort.direction === "asc" ? "ascending" : "descending") : undefined
-                    }
-                    className={cn(
-                      "h-[34px] whitespace-nowrap border-b border-line px-3 text-micro font-semibold uppercase tracking-[0.04em] text-ink-4",
-                      column.align === "right" && "text-right",
-                      index === 0 && "sticky left-0 z-30 bg-surface-muted",
-                      index === COLUMNS.length - 1 &&
-                        "sticky right-0 z-30 bg-surface-muted shadow-[-2px_0_0_0_var(--line-soft)]"
-                    )}
-                  >
-                    {sortable ? (
-                      <button
-                        type="button"
-                        onClick={() => onSortChange(column.key as SortKey)}
-                        className={cn(
-                          "inline-flex items-center gap-1 rounded-xs uppercase transition-colors hover:text-ink-2",
-                          "focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none",
-                          active && "text-violet"
-                        )}
-                      >
-                        {column.label}
-                        <SortIndicator active={active} direction={sort.direction} />
-                      </button>
-                    ) : (
-                      <span className="sr-only sm:not-sr-only">{column.label}</span>
-                    )}
-                  </th>
-                );
-              })}
-            </tr>
+            {table.getHeaderGroups().map((group) => (
+              <tr key={group.id}>
+                {group.headers.map((header) => {
+                  const column = header.column;
+                  const columnMeta = column.columnDef.meta;
+                  const sorted = column.getIsSorted();
+                  return (
+                    <th
+                      key={header.id}
+                      scope="col"
+                      aria-sort={
+                        sorted ? (sorted === "asc" ? "ascending" : "descending") : undefined
+                      }
+                      className={cn(
+                        "h-[34px] whitespace-nowrap border-b border-line px-3 text-micro font-semibold uppercase tracking-[0.04em] text-ink-4",
+                        columnMeta?.align === "right" && "text-right",
+                        stickyHeaderClass(columnMeta?.sticky)
+                      )}
+                    >
+                      {header.isPlaceholder ? null : column.getCanSort() ? (
+                        <button
+                          type="button"
+                          onClick={column.getToggleSortingHandler()}
+                          className={cn(
+                            "inline-flex items-center gap-1 rounded-xs uppercase transition-colors hover:text-ink-2",
+                            "focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none",
+                            sorted && "text-violet"
+                          )}
+                        >
+                          <table.FlexRender header={header} />
+                          <SortIndicator direction={sorted} />
+                        </button>
+                      ) : (
+                        <span className="sr-only sm:not-sr-only">
+                          <table.FlexRender header={header} />
+                        </span>
+                      )}
+                    </th>
+                  );
+                })}
+              </tr>
+            ))}
           </thead>
 
           <tbody>
             {state === "loading" &&
               Array.from({ length: 9 }).map((_, row) => (
                 <tr key={`skeleton-${row}`} className="border-b border-line-soft">
-                  {COLUMNS.map((column) => (
-                    <td key={column.label} className="h-[34px] px-3">
+                  {table.getAllLeafColumns().map((column) => (
+                    <td key={column.id} className="h-[34px] px-3">
                       <Skeleton className="h-3 w-full" />
                     </td>
                   ))}
@@ -222,7 +177,7 @@ export function BlotterTable({
 
             {state === "empty" && (
               <tr>
-                <td colSpan={COLUMNS.length} className="h-48 text-center align-middle">
+                <td colSpan={columnCount} className="h-48 text-center align-middle">
                   <p className="text-body-2 font-medium text-ink">No trades match these filters</p>
                   <p className="mt-1 text-cell-2 text-ink-4">
                     {hasFilters
@@ -240,7 +195,7 @@ export function BlotterTable({
 
             {state === "beyond-end" && (
               <tr>
-                <td colSpan={COLUMNS.length} className="h-48 text-center align-middle">
+                <td colSpan={columnCount} className="h-48 text-center align-middle">
                   <p className="text-body-2 font-medium text-ink">Nothing on this page</p>
                   <p className="mt-1 text-cell-2 text-ink-4">
                     There are matching trades, but fewer pages than this one.
@@ -258,7 +213,7 @@ export function BlotterTable({
 
             {state === "error" && (
               <tr>
-                <td colSpan={COLUMNS.length} className="h-48 text-center align-middle">
+                <td colSpan={columnCount} className="h-48 text-center align-middle">
                   <p className="text-body-2 font-medium text-ink">Unable to load trades</p>
                   <p className="mt-1 text-cell-2 text-ink-4">
                     The blotter service did not respond. Data shown may be stale.
@@ -271,17 +226,13 @@ export function BlotterTable({
             )}
 
             {state === "ready" &&
-              views.map((view) => {
-                const selected = view.id === selectedId;
-                const terminal = view.status !== "NEW";
-                // Reads as a standalone sentence at the top of the actions menu.
-                const reason = terminal
-                  ? `${view.status.charAt(0)}${view.status.slice(1).toLowerCase()} trades cannot be changed.`
-                  : null;
+              table.getRowModel().rows.map((row) => {
+                const trade = row.original;
+                const selected = trade.id === selectedId;
 
                 return (
                   <tr
-                    key={view.id}
+                    key={row.id}
                     /*
                      * A row is a real control: clickable, focusable, and
                      * selectable from the keyboard. Without this, the only way
@@ -291,87 +242,37 @@ export function BlotterTable({
                     role="row"
                     tabIndex={0}
                     aria-selected={selected}
-                    onClick={() => onSelect(view)}
+                    onClick={() => onSelect(trade)}
                     onKeyDown={(event) => {
                       if (event.key !== "Enter" && event.key !== " ") return;
                       event.preventDefault();
-                      onSelect(view);
+                      onSelect(trade);
                     }}
                     className={cn(
                       "group h-[34px] cursor-default border-b border-line-soft transition-colors",
                       "focus-visible:outline focus-visible:-outline-offset-2 focus-visible:outline-ring",
                       selected ? "bg-violet-soft" : "hover:bg-surface-muted",
-                      view.status === "CANCELLED" && "opacity-66"
+                      trade.status === "CANCELLED" && "opacity-66"
                     )}
                   >
-                    <td
-                      className={cn(
-                        "relative whitespace-nowrap px-3 font-mono text-cell text-ink-2",
-                        STICKY_LEFT_CELL,
-                        selected ? "bg-violet-soft" : "bg-surface"
-                      )}
-                    >
-                      {view.id === cursorId && (
-                        <span className="absolute left-0 top-0 h-full w-0.5 bg-violet" aria-hidden />
-                      )}
-                      {view.tradeId}
-                    </td>
-                    <td className="whitespace-nowrap px-3 text-cell-2 font-semibold text-ink">
-                      {view.symbol}
-                    </td>
-                    <td className="px-3">
-                      <SideTag side={view.side} />
-                    </td>
-                    <td className="px-3 text-right font-mono text-cell tabular-nums text-ink-2">
-                      {formatQuantity(view.quantity)}
-                    </td>
-                    <td className="px-3 text-right font-mono text-cell tabular-nums text-ink-2">
-                      {formatPrice(view.price)}
-                    </td>
-                    <td className="px-3 text-right font-mono text-cell tabular-nums text-ink">
-                      {view.notional}
-                    </td>
-                    <td className="px-3 text-right text-cell">
-                      <SignedValue value={view.signedQuantityValue} formatted={view.signedQuantity} />
-                    </td>
-                    <td className="px-3 text-right text-cell">
-                      <SignedValue value={view.signedNotionalValue} formatted={view.signedNotional} />
-                    </td>
-                    <td className="whitespace-nowrap px-3 text-cell-2 text-ink-2">{view.trader}</td>
-                    <td className="whitespace-nowrap px-3 font-mono text-mini-2 text-ink-3">
-                      {view.book}
-                    </td>
-                    <td className="max-w-[170px] truncate px-3 text-cell-2 text-ink-2">
-                      {view.counterparty}
-                    </td>
-                    <td className="whitespace-nowrap px-3 font-mono text-mini-2 text-ink-4">
-                      {formatTradeTimestamp(view.tradeTimestamp)}
-                    </td>
-                    <td className="px-3">
-                      <StatusPill status={view.status} />
-                    </td>
-                    <td className="px-3 text-right font-mono text-cell tabular-nums text-ink-4">
-                      v{view.version}
-                    </td>
-                    <td
-                      className={cn(
-                        "px-2",
-                        STICKY_RIGHT_CELL,
-                        selected ? "bg-violet-soft" : "bg-surface"
-                      )}
-                    >
-                      <div
-                        className="flex items-center justify-end"
-                        onClick={(event) => event.stopPropagation()}
-                      >
-                        <RowActionsMenu
-                          trade={view}
-                          reason={reason}
-                          blocked={terminal}
-                          onAction={onAction}
-                        />
-                      </div>
-                    </td>
+                    {row.getAllCells().map((cell) => {
+                      const columnMeta = cell.column.columnDef.meta;
+                      return (
+                        <td
+                          key={cell.id}
+                          className={cn(
+                            columnMeta?.cellClassName,
+                            columnMeta?.align === "right" && "text-right",
+                            stickyCellClass(columnMeta?.sticky),
+                            /* A sticky cell scrolls over other rows, so it
+                             * cannot inherit the row's background. */
+                            columnMeta?.sticky && (selected ? "bg-violet-soft" : "bg-surface")
+                          )}
+                        >
+                          <table.FlexRender cell={cell} />
+                        </td>
+                      );
+                    })}
                   </tr>
                 );
               })}
