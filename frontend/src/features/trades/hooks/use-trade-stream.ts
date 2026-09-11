@@ -1,37 +1,44 @@
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
-import { getCurrentUser } from "@/api/generated/endpoints/authentication/authentication";
-import { ApiError } from "@/api/fetch-client";
 import { openTradeStream } from "@/api/realtime/trade-events";
-import {
-  isStreamStale,
-  resolveConnection,
-  STREAM_SILENCE_TIMEOUT_MS
-} from "@/features/trades/lib/connection";
 import { TRADES_QUERY_ROOT } from "@/features/trades/hooks/use-trades";
 import type { TradeEvent } from "@/api/generated/models";
 import type { ConnectionState } from "@/types/trade";
 
-/** How often the watchdog re-evaluates silence. */
-const WATCHDOG_INTERVAL_MS = 1_000;
-
 /**
- * Events are batched into one refetch over this window.
+ * SSE is a notification channel, not the source of truth.
  *
- * A busy desk produces a burst of notifications, and every connected client
- * sees all of them. Refetching per event turns one trader's activity into a
- * request storm from everyone's browser; a short trailing window collapses a
- * burst into a single refetch while still feeling immediate.
- */
-const REFETCH_COALESCE_MS = 250;
-
-/**
- * How many trades' versions to remember for stale-form detection.
+ * The server tells us a trade changed; we ask REST what the blotter now looks
+ * like. `invalidateQueries` marks the trades cache stale, every `useTrades`
+ * subscriber refetches, and the table re-renders. That is the whole update
+ * loop, and it is deliberately the simplest thing that is always correct: the
+ * screen can only ever show what the server just said.
  *
- * Only the trade currently open in a form is ever read back, so an unbounded
- * map is pure growth in a screen that stays open all day.
+ * The event payload is used for two things that a refetch cannot answer,
+ * neither of which touches the cache — when the last update landed, and which
+ * version the server last reported per trade, so a form open over a trade that
+ * has moved underneath it can say so.
+ *
+ * ── Known trade-offs ─────────────────────────────────────────────────────
+ *
+ * Deliberate, and fine at take-home scale (a handful of clients, a quiet
+ * desk). Each would need addressing before this ran a real floor:
+ *
+ *  1. One refetch per event, per client. A burst of activity is a burst of
+ *     requests from every connected browser. The fix is a debounced trailing
+ *     window, so a burst costs one request per client rather than N.
+ *  2. A row already on screen still costs a round trip, even though the event
+ *     carries the canonical trade and could be written straight into the
+ *     cache. The fix is patching the cached page from the payload and
+ *     refetching only what a single page cannot settle — membership and
+ *     ordering.
+ *  3. Connection state trusts `EventSource`. A socket that dies silently can
+ *     sit open for minutes without raising `onerror`, and this will keep
+ *     reporting "live" throughout. The fix is a watchdog over the 5s
+ *     heartbeat, treating silence past two of them as dead.
+ *  4. `latestVersions` grows for the life of the session. Bounded in practice
+ *     by how many distinct trades move while the tab is open.
  */
-const TRACKED_VERSION_LIMIT = 200;
 
 export type TradeStreamState = {
   connection: ConnectionState;
@@ -44,187 +51,74 @@ type Options = {
   enabled: boolean;
   /** Called when an event arrives for a trade the user currently has open. */
   onRemoteUpdate?: (event: TradeEvent) => void;
-  /** Called only once the session is confirmed invalid, never on a network drop. */
+  /** Called only once the server confirms the session is gone. */
   onSessionExpired?: () => void;
 };
 
-function browserOnline(): boolean {
-  return typeof navigator === "undefined" || navigator.onLine !== false;
-}
-
-/** Keep the most recently seen entries, discarding the oldest. */
-function withTrackedLimit(versions: Record<string, number>): Record<string, number> {
-  const keys = Object.keys(versions);
-  if (keys.length <= TRACKED_VERSION_LIMIT) return versions;
-  return Object.fromEntries(
-    keys.slice(keys.length - TRACKED_VERSION_LIMIT).map((key) => [key, versions[key] as number])
-  );
-}
-
-/**
- * SSE is a notification channel, not the source of truth.
- *
- * Connection state is derived from three signals rather than from
- * `EventSource.onerror` alone, which can stay silent for minutes while a broken
- * socket sits open:
- *
- *   - `navigator.onLine` — instant and conclusive when the machine drops off.
- *   - a permanently closed `EventSource` — the browser has stopped retrying.
- *   - elapsed silence — no heartbeat for longer than two intervals.
- *
- * On connect and every reconnect we refetch REST state, so a notification
- * missed while disconnected cannot leave the blotter stale. Incoming events
- * only ever trigger a refetch and record the observed version — they never
- * write a trade into the cache directly.
- */
-export function useTradeStream({ enabled, onRemoteUpdate, onSessionExpired }: Options): TradeStreamState {
+export function useTradeStream({
+  enabled,
+  onRemoteUpdate,
+  onSessionExpired
+}: Options): TradeStreamState {
   const queryClient = useQueryClient();
   const [connection, setConnection] = useState<ConnectionState>("reconnecting");
   const [lastUpdateAt, setLastUpdateAt] = useState<string | null>(null);
   const [latestVersions, setLatestVersions] = useState<Record<string, number>>({});
 
-  /** Bumped to tear down and reopen the stream immediately. */
-  const [reconnectKey, setReconnectKey] = useState(0);
-
-  const lastMessageAtRef = useRef<number | null>(null);
-  const streamClosedRef = useRef(false);
-  const refetchTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const updateRef = useRef(onRemoteUpdate);
   const expiredRef = useRef(onSessionExpired);
 
   /*
    * The stream is opened once and calls back through these refs, so a new
-   * callback identity never tears down a healthy connection. Writing them in an
-   * effect keeps the mutation out of the render phase.
+   * callback identity never tears down a healthy connection. Writing them in
+   * an effect keeps the mutation out of the render phase.
    */
   useEffect(() => {
     updateRef.current = onRemoteUpdate;
     expiredRef.current = onSessionExpired;
   });
 
-  const recomputeConnection = useCallback(() => {
-    setConnection(
-      resolveConnection({
-        browserOnline: browserOnline(),
-        streamClosed: streamClosedRef.current,
-        lastMessageAt: lastMessageAtRef.current,
-        now: Date.now()
-      })
-    );
-  }, []);
-
-  /** Collapses a burst of notifications into one authoritative refetch. */
-  const scheduleRefetch = useCallback(() => {
-    if (refetchTimerRef.current !== null) return;
-    refetchTimerRef.current = setTimeout(() => {
-      refetchTimerRef.current = null;
-      void queryClient.invalidateQueries({ queryKey: TRADES_QUERY_ROOT });
-    }, REFETCH_COALESCE_MS);
-  }, [queryClient]);
-
-  const reopen = useCallback(() => {
-    lastMessageAtRef.current = null;
-    streamClosedRef.current = false;
-    setReconnectKey((key) => key + 1);
-  }, []);
-
-  // ── The stream itself ────────────────────────────────────────────────────
   useEffect(() => {
     if (!enabled) return;
 
     const stream = openTradeStream({
-      onHeartbeat: () => {
-        lastMessageAtRef.current = Date.now();
-        streamClosedRef.current = false;
-        recomputeConnection();
-      },
+      // Connect and every reconnect land here, so an event missed while
+      // disconnected cannot leave the blotter stale.
       onConnected: () => {
-        // Reconcile against authoritative state on connect and reconnect.
+        setConnection("live");
         void queryClient.invalidateQueries({ queryKey: TRADES_QUERY_ROOT });
       },
+
+      onHeartbeat: () => setConnection("live"),
+
       onEvent: (event) => {
         setLastUpdateAt(event.occurredAt);
         setLatestVersions((current) => {
           const seen = current[event.trade.id];
-          // Ignore duplicate or out-of-order notifications.
+          // Ignore a duplicate or a frame that overtook its predecessor,
+          // which would otherwise raise a stale-form warning in reverse.
           if (seen !== undefined && seen >= event.trade.version) return current;
-          return withTrackedLimit({ ...current, [event.trade.id]: event.trade.version });
+          return { ...current, [event.trade.id]: event.trade.version };
         });
+
+        // Warn an open form before the refetch lands underneath it.
         updateRef.current?.(event);
-        scheduleRefetch();
+        void queryClient.invalidateQueries({ queryKey: TRADES_QUERY_ROOT });
       },
-      // The server said so, so there is nothing to confirm.
+
+      // The server revalidates the session behind a live stream and closes it
+      // when that session is revoked, so this is conclusive — unlike an error,
+      // which is equally a network fault.
       onSessionExpired: () => {
-        streamClosedRef.current = true;
-        recomputeConnection();
+        setConnection("disconnected");
         expiredRef.current?.();
       },
-      onError: (permanentlyClosed) => {
-        streamClosedRef.current = permanentlyClosed;
-        recomputeConnection();
 
-        // A closed stream is either a dead session or a dead network. Ask,
-        // rather than assuming expiry and throwing up a misleading dialog.
-        if (permanentlyClosed && browserOnline()) {
-          getCurrentUser().catch((error) => {
-            if (error instanceof ApiError && error.status === 401) expiredRef.current?.();
-          });
-        }
-      }
+      onError: () => setConnection("disconnected")
     });
 
-    return () => {
-      stream.close();
-      streamClosedRef.current = false;
-      lastMessageAtRef.current = null;
-      if (refetchTimerRef.current !== null) {
-        clearTimeout(refetchTimerRef.current);
-        refetchTimerRef.current = null;
-      }
-    };
-  }, [enabled, reconnectKey, queryClient, recomputeConnection, scheduleRefetch]);
-
-  // ── Watchdog: catches a socket that is open but silent ───────────────────
-  useEffect(() => {
-    if (!enabled) return;
-    const timer = setInterval(recomputeConnection, WATCHDOG_INTERVAL_MS);
-    return () => clearInterval(timer);
-  }, [enabled, recomputeConnection]);
-
-  // ── Instant browser signals ──────────────────────────────────────────────
-  useEffect(() => {
-    if (!enabled) return;
-
-    const goOffline = () => {
-      streamClosedRef.current = true;
-      recomputeConnection();
-    };
-
-    // Don't wait out the browser's own retry backoff once the network returns.
-    const goOnline = () => {
-      recomputeConnection();
-      reopen();
-    };
-
-    // Waking a backgrounded tab: the stream is usually dead but has raised
-    // nothing yet, so re-evaluate and reopen if it has gone quiet.
-    const onVisible = () => {
-      if (document.visibilityState !== "visible") return;
-      recomputeConnection();
-      if (streamClosedRef.current || isStreamStale(lastMessageAtRef.current, Date.now())) {
-        reopen();
-      }
-    };
-
-    window.addEventListener("offline", goOffline);
-    window.addEventListener("online", goOnline);
-    document.addEventListener("visibilitychange", onVisible);
-    return () => {
-      window.removeEventListener("offline", goOffline);
-      window.removeEventListener("online", goOnline);
-      document.removeEventListener("visibilitychange", onVisible);
-    };
-  }, [enabled, recomputeConnection, reopen]);
+    return () => stream.close();
+  }, [enabled, queryClient]);
 
   return {
     // Derived rather than stored: with no stream open there is nothing to
@@ -235,5 +129,3 @@ export function useTradeStream({ enabled, onRemoteUpdate, onSessionExpired }: Op
     latestVersions
   };
 }
-
-export { STREAM_SILENCE_TIMEOUT_MS };

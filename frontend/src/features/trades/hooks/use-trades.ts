@@ -9,6 +9,17 @@ import type { TableState, TradeExposure, TradeFilters, TradeSort, TradeView } fr
 
 export const TRADES_QUERY_ROOT = ["trades"] as const;
 
+/**
+ * The two halves of the trades cache, addressable separately.
+ *
+ * The stream currently invalidates the root, refreshing both together. They are
+ * kept as distinct keys because a filter change only ever affects one of them,
+ * and because refreshing them independently is the first step of the refinement
+ * recorded in ADR 0003.
+ */
+export const TRADES_LIST_KEY = [...TRADES_QUERY_ROOT, "list"] as const;
+export const TRADES_EXPOSURE_KEY = [...TRADES_QUERY_ROOT, "exposure"] as const;
+
 /** The filter half of the query, shared by the list and its aggregates. */
 function toFilterParams(filters: TradeFilters): GetTradeExposureParams {
   return {
@@ -55,7 +66,7 @@ export function useTrades(
   );
 
   const query = useQuery({
-    queryKey: [...TRADES_QUERY_ROOT, "list", params],
+    queryKey: [...TRADES_LIST_KEY, params],
     queryFn: async ({ signal }) => ok(await listTrades(params, { signal })),
     enabled,
     placeholderData: keepPreviousData
@@ -100,7 +111,7 @@ export function useTradeExposure(filters: TradeFilters, enabled: boolean): UseTr
   const params = useMemo(() => toFilterParams(filters), [filters]);
 
   const query = useQuery({
-    queryKey: [...TRADES_QUERY_ROOT, "exposure", params],
+    queryKey: [...TRADES_EXPOSURE_KEY, params],
     queryFn: async ({ signal }) => ok(await getTradeExposure(params, { signal })),
     enabled,
     placeholderData: keepPreviousData
