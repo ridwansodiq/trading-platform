@@ -49,6 +49,16 @@ class FakeEventSource {
       handler({ data: JSON.stringify(payload) });
     }
   }
+
+  /**
+   * A transport failure. `EventSource` leaves `readyState` at CONNECTING while
+   * it intends to retry and moves it to CLOSED when it has given up, which is
+   * the only thing separating a blip from a dead stream.
+   */
+  fail(permanently: boolean): void {
+    this.readyState = permanently ? FakeEventSource.CLOSED : FakeEventSource.CONNECTING;
+    this.onerror?.({});
+  }
 }
 
 const TRADE_ID = "11111111-1111-4111-8111-111111111111";
@@ -86,6 +96,13 @@ function tradeEvent(
 }
 
 let queryClient: QueryClient;
+/** Stands in for `navigator.onLine`, which jsdom reports as permanently true. */
+let onLine = true;
+
+Object.defineProperty(window.navigator, "onLine", {
+  configurable: true,
+  get: () => onLine
+});
 
 function wrapper({ children }: { children: ReactNode }) {
   return <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>;
@@ -103,7 +120,25 @@ function emit(type: string, payload: unknown = {}): void {
   });
 }
 
+function fail(permanently: boolean): void {
+  act(() => {
+    latest().fail(permanently);
+  });
+}
+
+/**
+ * Takes the machine's network up or down the way the browser does: `onLine`
+ * flips first, and the event that announces it follows.
+ */
+function network(event: "online" | "offline"): void {
+  onLine = event === "online";
+  act(() => {
+    window.dispatchEvent(new Event(event));
+  });
+}
+
 beforeEach(() => {
+  onLine = true;
   FakeEventSource.instances = [];
   vi.stubGlobal("EventSource", FakeEventSource);
   queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } });
@@ -112,6 +147,7 @@ beforeEach(() => {
 afterEach(() => {
   queryClient.clear();
   vi.unstubAllGlobals();
+  vi.useRealTimers();
 });
 
 describe("useTradeStream", () => {
@@ -199,6 +235,93 @@ describe("useTradeStream", () => {
 
     expect(onSessionExpired).toHaveBeenCalledOnce();
     expect(result.current.connection).toBe("disconnected");
+  });
+
+  it("reports a drop the browser is still retrying as reconnecting", () => {
+    const { result } = renderHook(() => useTradeStream({ enabled: true }), { wrapper });
+    emit("heartbeat");
+
+    fail(false);
+
+    expect(result.current.connection).toBe("reconnecting");
+  });
+
+  it("reports a drop the browser has given up on as disconnected", () => {
+    const { result } = renderHook(() => useTradeStream({ enabled: true }), { wrapper });
+    emit("heartbeat");
+
+    fail(true);
+
+    expect(result.current.connection).toBe("disconnected");
+  });
+
+  it("gives up on a socket that goes quiet, which raises no error of its own", () => {
+    vi.useFakeTimers();
+    const { result } = renderHook(() => useTradeStream({ enabled: true }), { wrapper });
+    emit("heartbeat");
+
+    act(() => {
+      vi.advanceTimersByTime(11_000);
+    });
+    expect(result.current.connection).toBe("live");
+
+    act(() => {
+      vi.advanceTimersByTime(2_000);
+    });
+    expect(result.current.connection).toBe("disconnected");
+  });
+
+  it("keeps a stream that is still beating alive", () => {
+    vi.useFakeTimers();
+    const { result } = renderHook(() => useTradeStream({ enabled: true }), { wrapper });
+
+    for (let beat = 0; beat < 4; beat += 1) {
+      emit("heartbeat");
+      act(() => {
+        vi.advanceTimersByTime(5_000);
+      });
+    }
+
+    expect(result.current.connection).toBe("live");
+  });
+
+  it("names a lost network as offline rather than as a server we cannot reach", () => {
+    const { result } = renderHook(() => useTradeStream({ enabled: true }), { wrapper });
+    emit("heartbeat");
+
+    network("offline");
+
+    expect(result.current.connection).toBe("offline");
+  });
+
+  it("reports offline over whatever the socket last managed to say", () => {
+    const { result } = renderHook(() => useTradeStream({ enabled: true }), { wrapper });
+    emit("heartbeat");
+    network("offline");
+
+    fail(true);
+
+    expect(result.current.connection).toBe("offline");
+  });
+
+  it("returns to the transport's own state once the network is back", () => {
+    const { result } = renderHook(() => useTradeStream({ enabled: true }), { wrapper });
+    emit("heartbeat");
+    network("offline");
+
+    network("online");
+
+    expect(result.current.connection).toBe("live");
+  });
+
+  it("stops listening for network events on unmount", () => {
+    const { result, unmount } = renderHook(() => useTradeStream({ enabled: true }), { wrapper });
+    emit("heartbeat");
+
+    unmount();
+    network("offline");
+
+    expect(result.current.connection).toBe("live");
   });
 
   it("closes the stream on unmount", () => {

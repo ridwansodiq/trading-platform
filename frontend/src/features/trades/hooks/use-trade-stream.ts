@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, useSyncExternalStore } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { openTradeStream } from "@/api/realtime/trade-events";
 import { TRADES_QUERY_ROOT } from "@/features/trades/hooks/use-trades";
@@ -32,13 +32,20 @@ import type { ConnectionState } from "@/types/trade";
  *     cache. The fix is patching the cached page from the payload and
  *     refetching only what a single page cannot settle — membership and
  *     ordering.
- *  3. Connection state trusts `EventSource`. A socket that dies silently can
- *     sit open for minutes without raising `onerror`, and this will keep
- *     reporting "live" throughout. The fix is a watchdog over the 5s
- *     heartbeat, treating silence past two of them as dead.
- *  4. `latestVersions` grows for the life of the session. Bounded in practice
+ *  3. `latestVersions` grows for the life of the session. Bounded in practice
  *     by how many distinct trades move while the tab is open.
  */
+
+/**
+ * The server sends a heartbeat every 5s. Two of them may be lost to an ordinary
+ * hiccup; silence past that is treated as a dead socket, because `EventSource`
+ * will not report one — a connection that dies without a FIN can sit open
+ * indefinitely without ever raising `onerror`.
+ */
+const HEARTBEAT_TIMEOUT_MS = 12_000;
+
+/** What the socket alone can tell us; `offline` is the machine's answer, not its. */
+type TransportState = Exclude<ConnectionState, "offline">;
 
 export type TradeStreamState = {
   connection: ConnectionState;
@@ -61,7 +68,13 @@ export function useTradeStream({
   onSessionExpired
 }: Options): TradeStreamState {
   const queryClient = useQueryClient();
-  const [connection, setConnection] = useState<ConnectionState>("reconnecting");
+  const [transport, setTransport] = useState<TransportState>("reconnecting");
+  /*
+   * A machine with no network is worth saying out loud, because the remedy is
+   * the user's rather than the desk's. Subscribed rather than held in state, so
+   * a drop between the first render and the subscription cannot be missed.
+   */
+  const online = useSyncExternalStore(subscribeToNetwork, () => navigator.onLine);
   const [lastUpdateAt, setLastUpdateAt] = useState<string | null>(null);
   const [latestVersions, setLatestVersions] = useState<Record<string, number>>({});
 
@@ -81,15 +94,27 @@ export function useTradeStream({
   useEffect(() => {
     if (!enabled) return;
 
+    /*
+     * Restarted by every frame the server sends. A stream that goes quiet for
+     * longer than the window is reported as dead even though the socket still
+     * believes it is open, which is the only way a silent death surfaces.
+     */
+    let watchdog: ReturnType<typeof setTimeout> | undefined;
+    const markAlive = () => {
+      setTransport("live");
+      clearTimeout(watchdog);
+      watchdog = setTimeout(() => setTransport("disconnected"), HEARTBEAT_TIMEOUT_MS);
+    };
+
     const stream = openTradeStream({
       // Connect and every reconnect land here, so an event missed while
       // disconnected cannot leave the blotter stale.
       onConnected: () => {
-        setConnection("live");
+        markAlive();
         void queryClient.invalidateQueries({ queryKey: TRADES_QUERY_ROOT });
       },
 
-      onHeartbeat: () => setConnection("live"),
+      onHeartbeat: markAlive,
 
       onEvent: (event) => {
         setLastUpdateAt(event.occurredAt);
@@ -110,22 +135,63 @@ export function useTradeStream({
       // when that session is revoked, so this is conclusive — unlike an error,
       // which is equally a network fault.
       onSessionExpired: () => {
-        setConnection("disconnected");
+        clearTimeout(watchdog);
+        setTransport("disconnected");
         expiredRef.current?.();
       },
 
-      onError: () => setConnection("disconnected")
+      /*
+       * While `EventSource` is still retrying the drop may recover on its own,
+       * so it is reported as reconnecting rather than as a dead desk. Either
+       * way the socket has spoken, and the watchdog has nothing left to catch.
+       */
+      onError: (permanentlyClosed) => {
+        clearTimeout(watchdog);
+        setTransport(permanentlyClosed ? "disconnected" : "reconnecting");
+      }
     });
 
-    return () => stream.close();
+    return () => {
+      clearTimeout(watchdog);
+      stream.close();
+    };
   }, [enabled, queryClient]);
 
   return {
     // Derived rather than stored: with no stream open there is nothing to
     // report, and writing that into state from an effect would render one
-    // frame of the previous connection before correcting itself.
-    connection: enabled ? connection : "disconnected",
+    // frame of the previous connection before correcting itself. A machine
+    // that is offline outranks whatever the socket last managed to say.
+    connection: resolveConnection({ enabled, online, transport }),
     lastUpdateAt,
     latestVersions
   };
+}
+
+/**
+ * `navigator.onLine` is only ever read in answer to the browser's own network
+ * events, never polled — it reports whether an interface is up, which is worth
+ * believing when it says no and worth nothing when it says yes.
+ */
+function subscribeToNetwork(onChange: () => void): () => void {
+  window.addEventListener("online", onChange);
+  window.addEventListener("offline", onChange);
+  return () => {
+    window.removeEventListener("online", onChange);
+    window.removeEventListener("offline", onChange);
+  };
+}
+
+function resolveConnection({
+  enabled,
+  online,
+  transport
+}: {
+  enabled: boolean;
+  online: boolean;
+  transport: TransportState;
+}): ConnectionState {
+  if (!enabled) return "disconnected";
+  if (!online) return "offline";
+  return transport;
 }
