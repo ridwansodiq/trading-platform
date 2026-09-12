@@ -12,12 +12,14 @@ Requires Docker, and nothing else.
 docker compose up --build
 ```
 
-Open `http://localhost:3001` and sign in with:
+Open `http://localhost:3001` and sign in with either demo account:
 
 ```text
-alice.morgan@fusion.local
-Fusion123!
+alice.morgan@fusion.local / Fusion123!
+bob.chen@fusion.local     / Fusion123!
 ```
+
+Signing in as both in two browsers shows the live updates crossing between them.
 
 One command builds both workspaces, starts PostgreSQL, applies migrations, seeds
 5,000 demo trades, and serves the API and the built SPA from a single origin. The

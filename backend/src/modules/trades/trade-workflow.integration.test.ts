@@ -617,11 +617,17 @@ describe("trade workflow", () => {
   });
 
   describe("the event stream's global sequence", () => {
-    /** Where the stream has got to overall, as a client's cursor would be. */
+    /**
+     * Where the stream has got to overall, as a client's cursor would be. On a
+     * migrated but unseeded database the table is empty whenever the previous
+     * test's cleanup has just run, and `0` is below every value BIGSERIAL
+     * hands out, so it is the right floor for "nothing issued yet".
+     */
     const latestStreamSequence = async () =>
       (
-        await prisma.tradeAuditEvent.aggregate({ _max: { streamSequence: true } })
-      )._max.streamSequence!.toString();
+        (await prisma.tradeAuditEvent.aggregate({ _max: { streamSequence: true } }))._max
+          .streamSequence ?? 0n
+      ).toString();
 
     it("orders audit events across trades, not only within one", async () => {
       const first = (await createTrade()).json().id;
