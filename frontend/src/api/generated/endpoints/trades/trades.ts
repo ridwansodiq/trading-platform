@@ -1241,7 +1241,7 @@ export const getStreamTradeEventsUrl = () => {
 }
 
 /**
- * Server-Sent Events stream of committed trade mutations. Notification only; REST remains authoritative. Emits a named "heartbeat" event every 5s so a client can detect a dead connection without waiting for a TCP timeout, and a "connected" event on open. The stream closes when its session is revoked or expires, and when the server has no capacity for another subscriber.
+ * Server-Sent Events stream of committed trade mutations. Notification only; REST remains authoritative. Emits a named "heartbeat" event every 5s so a client can detect a dead connection without waiting for a TCP timeout, and a "connected" event on open. The stream closes when its session is revoked or expires, and when the server has no capacity for another subscriber. Each event frame is identified by its streamSequence, the audit event's position in the global event stream; reconnecting with that value in Last-Event-ID replays everything committed after it, oldest first, before live events resume.
  */
 export const streamTradeEvents = async ( options?: RequestInit): Promise<streamTradeEventsResponse> => {
 

@@ -20,9 +20,17 @@ export function createTradesModule(options: {
   const tradeRepository = new TradeRepository(prisma, auditRepository);
   const tradeService = new TradeService(tradeRepository, auditRepository, options.events);
 
-  return { routes: createTradeRoutes({ tradeService, requireAuth: options.requireAuth }) };
+  return {
+    routes: createTradeRoutes({ tradeService, requireAuth: options.requireAuth }),
+    /**
+     * Backs the SSE stream's `Last-Event-ID` replay. Exposed as a plain
+     * function so `realtime/` depends on a capability rather than on the
+     * service behind it, the same way it already receives a publisher.
+     */
+    replayEvents: (afterStreamSequence: string) => tradeService.listEventsSince(afterStreamSequence)
+  };
 }
 
 export { tradeEventSchema } from "./schemas/trade-response";
-export type { TradeState } from "./types";
+export type { TradeEvent, TradeState } from "./types";
 export type { TradeEventPublisher } from "./services/trade";

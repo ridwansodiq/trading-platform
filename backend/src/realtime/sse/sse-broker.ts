@@ -20,6 +20,18 @@ export type SseBrokerOptions = {
 
 const DEFAULT_MAX_BUFFERED_BYTES = 1_000_000;
 
+/**
+ * A named event, with `data` on its own line, per the SSE wire format.
+ *
+ * Exported because a frame is not only ever broadcast: a reconnecting client is
+ * replayed what it missed on its own socket, and both paths have to put an `id`
+ * on the wire the same way or a resumed stream would be resumed from a
+ * different cursor than it was sent.
+ */
+export function sseFrame(event: string, payload: unknown, id?: string): string {
+  return (id ? `id: ${id}\n` : "") + `event: ${event}\ndata: ${JSON.stringify(payload)}\n\n`;
+}
+
 export class SseBroker {
   private readonly clients = new Set<ServerResponse>();
   private readonly maxClients: number;
@@ -37,10 +49,8 @@ export class SseBroker {
     return () => this.clients.delete(response);
   }
 
-  /** A named event, with `data` on its own line, per the SSE wire format. */
   broadcast(event: string, payload: unknown, id?: string): void {
-    const frame =
-      (id ? `id: ${id}\n` : "") + `event: ${event}\ndata: ${JSON.stringify(payload)}\n\n`;
+    const frame = sseFrame(event, payload, id);
 
     for (const client of this.clients) {
       this.send(client, frame);

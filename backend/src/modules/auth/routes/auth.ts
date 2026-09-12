@@ -33,8 +33,14 @@ export function createAuthRoutes({ authService, requireAuth }: AuthRoutesOptions
           body: loginSchema,
           response: { 200: currentUserResponseSchema, ...errors, 429: apiErrorSchema }
         },
-        // Tighter than the global limit: this is the one endpoint worth guessing at.
-        config: { rateLimit: { max: 10, timeWindow: "1 minute" } }
+        /*
+         * The only limited route on the API. It is unauthenticated and it is
+         * the one endpoint worth guessing at, so the ceiling is set for a
+         * person mistyping a password rather than for a script trying a
+         * dictionary — five attempts a minute leaves room for the first and
+         * none for the second.
+         */
+        config: { rateLimit: { max: 5, timeWindow: "1 minute" } }
       },
       async (request, reply) => {
         const { email, password } = request.body as LoginBody;

@@ -7,7 +7,7 @@ import type {
   TradeFilterField,
   TradeSortKey
 } from "../schemas/list-trades";
-import type { MutationDecision, TradeState } from "../types";
+import type { MutationDecision, TradeEvent, TradeState } from "../types";
 import {
   InvalidTradeTransitionError,
   TradeAlreadyExistsError,
@@ -220,23 +220,23 @@ export class TradeRepository {
   /**
    * Insert the trade and its `CREATED` audit event in one transaction.
    *
-   * Returns the row PostgreSQL stored rather than the state we asked it to
-   * store: `price` is `numeric(18,4)` and the timestamps are database-owned, so
-   * the two are not always the same value. The audit snapshot is taken from the
-   * same row, so the log can only ever describe what was actually written.
+   * Returns the committed audit event, which carries the row PostgreSQL stored
+   * rather than the state we asked it to store: `price` is `numeric(18,4)` and
+   * the timestamps are database-owned, so the two are not always the same
+   * value. The audit snapshot is taken from the same row, so the log can only
+   * ever describe what was actually written.
    */
-  async insertWithAudit(decision: MutationDecision): Promise<TradeState> {
+  async insertWithAudit(decision: MutationDecision): Promise<TradeEvent> {
     try {
       return await this.prisma.$transaction(async (tx) => {
         const row = await tx.trade.create({ data: toTradeCreateData(decision.nextTrade) });
         const stored = toTradeState(row);
-        await this.audit.insert(tx, {
+        return this.audit.insert(tx, {
           ...decision.audit,
           tradeId: stored.id,
           tradeVersion: stored.version,
           after: stored
         });
-        return stored;
       });
     } catch (error) {
       if (
@@ -261,7 +261,7 @@ export class TradeRepository {
   async applyMutationWithAudit(
     expectedVersion: number,
     decision: MutationDecision
-  ): Promise<TradeState> {
+  ): Promise<TradeEvent> {
     const id = decision.nextTrade.id;
 
     return this.prisma.$transaction(async (tx) => {
@@ -285,13 +285,12 @@ export class TradeRepository {
 
       // `updateMany` reports a count, not a row, so read back what it wrote.
       const stored = toTradeState(await tx.trade.findUniqueOrThrow({ where: { id } }));
-      await this.audit.insert(tx, {
+      return this.audit.insert(tx, {
         ...decision.audit,
         tradeId: stored.id,
         tradeVersion: stored.version,
         after: stored
       });
-      return stored;
     });
   }
 

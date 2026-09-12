@@ -101,6 +101,17 @@ model TradeAuditEvent {
   id               String              @id @default(uuid()) @db.Uuid
   tradeId          String              @db.Uuid
   tradeVersion     Int
+  /// Position in the global event stream, assigned by a PostgreSQL sequence as
+  /// the row is inserted. `tradeVersion` orders one trade's own history and
+  /// still does; this orders every audit event against every other, which is
+  /// what lets a reconnecting SSE client name what it already has and be sent
+  /// exactly what it missed. Generating it in the database rather than in the
+  /// application is what makes that safe across more than one instance.
+  ///
+  /// Gaps are expected and harmless: a rolled-back transaction keeps the
+  /// sequence value it drew. Nothing to do with an exchange or venue sequence
+  /// number — this counts our own audit events and nothing else.
+  streamSequence   BigInt              @unique @default(autoincrement())
   eventType        TradeAuditEventType
   actorUserId      String              @db.Uuid
   actorDisplayName String

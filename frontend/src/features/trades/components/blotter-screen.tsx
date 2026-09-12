@@ -7,7 +7,10 @@ import { BlotterTable, type RowAction } from "@/features/trades/components/blott
 import { BlotterToolbar } from "@/features/trades/components/blotter-toolbar";
 import { ConfirmTransitionDialog } from "@/features/trades/components/confirm-transition-dialog";
 import { ExposureStrip } from "@/features/trades/components/exposure-strip";
-import { SimulateMenuItem } from "@/features/trades/components/simulate-menu-item";
+import {
+  SimulateMenuItem,
+  useSimulationSource
+} from "@/features/trades/components/simulate-menu-item";
 import { TradeFormDrawer } from "@/features/trades/components/trade-form-drawer";
 import { useBlotterQueryState } from "@/features/trades/hooks/use-blotter-query-state";
 import { useRowCursor } from "@/features/trades/hooks/use-row-cursor";
@@ -51,6 +54,9 @@ export function BlotterScreen({ user, onSignOut, onSessionExpired }: Props) {
   );
   const { exposure } = useTradeExposure(query.filters, true);
   const cursor = useRowCursor(views);
+
+  // Lets the demo simulation amend and cancel the rows actually on screen.
+  useSimulationSource(views);
 
   const pageCount = Math.max(1, Math.ceil(total / PAGE_SIZE));
   const goToLastPage = useCallback(() => query.setPage(pageCount), [query, pageCount]);

@@ -512,7 +512,7 @@ export const CancelTradeResponse = zod.object({
 })
 
 /**
- * Server-Sent Events stream of committed trade mutations. Notification only; REST remains authoritative. Emits a named "heartbeat" event every 5s so a client can detect a dead connection without waiting for a TCP timeout, and a "connected" event on open. The stream closes when its session is revoked or expires, and when the server has no capacity for another subscriber.
+ * Server-Sent Events stream of committed trade mutations. Notification only; REST remains authoritative. Emits a named "heartbeat" event every 5s so a client can detect a dead connection without waiting for a TCP timeout, and a "connected" event on open. The stream closes when its session is revoked or expires, and when the server has no capacity for another subscriber. Each event frame is identified by its streamSequence, the audit event's position in the global event stream; reconnecting with that value in Last-Event-ID replays everything committed after it, oldest first, before live events resume.
  */
 export const streamTradeEventsResponseIdRegExp = new RegExp('^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$');
 export const streamTradeEventsResponseTradeIdRegExp = new RegExp('^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$');
@@ -530,6 +530,7 @@ export const streamTradeEventsResponseTradeVersionMax = 9007199254740991;
 export const streamTradeEventsResponseTradeCreatedAtRegExp = new RegExp('^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$');
 export const streamTradeEventsResponseTradeUpdatedAtRegExp = new RegExp('^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$');
 export const streamTradeEventsResponseOccurredAtRegExp = new RegExp('^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$');
+export const streamTradeEventsResponseStreamSequenceRegExp = new RegExp('^\\d+$');
 
 
 export const StreamTradeEventsResponse = zod.object({
@@ -552,6 +553,7 @@ export const StreamTradeEventsResponse = zod.object({
   "createdAt": zod.iso.datetime({"offset":true}).regex(streamTradeEventsResponseTradeCreatedAtRegExp),
   "updatedAt": zod.iso.datetime({"offset":true}).regex(streamTradeEventsResponseTradeUpdatedAtRegExp)
 }),
-  "occurredAt": zod.iso.datetime({"offset":true}).regex(streamTradeEventsResponseOccurredAtRegExp)
+  "occurredAt": zod.iso.datetime({"offset":true}).regex(streamTradeEventsResponseOccurredAtRegExp),
+  "streamSequence": zod.string().regex(streamTradeEventsResponseStreamSequenceRegExp)
 })
 

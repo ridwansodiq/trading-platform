@@ -129,12 +129,21 @@ export const tradeAuditPageSchema = z
 /**
  * SSE payload. Published as a component so the frontend gets both a type and a
  * runtime validator even though connection handling is handwritten.
+ *
+ * `id` and `occurredAt` are the audit event's own, not the notification's, so a
+ * frame replayed after a reconnect is identical to the one it repeats.
+ *
+ * `streamSequence` is a decimal string rather than a number: the column is a
+ * `BIGINT`, and past 2^53 a JSON number stops being able to hold one exactly —
+ * which for a cursor means silently resuming from the wrong event. It is also
+ * the frame's SSE id, so a browser hands it straight back in `Last-Event-ID`.
  */
 export const tradeEventSchema = z
   .object({
     id: z.string().uuid(),
     eventType: tradeAuditEventTypeSchema,
     trade: tradeSchema,
-    occurredAt: z.string().datetime()
+    occurredAt: z.string().datetime(),
+    streamSequence: z.string().regex(/^\d+$/)
   })
   .meta({ id: "TradeEvent" });

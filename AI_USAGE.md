@@ -58,5 +58,5 @@ npm run verify
 
 This runs type checking, linting, the architecture boundary assertions, domain and integration tests, frontend tests, and production builds. The generated API client is committed rather than regenerated here, so after changing a backend Zod schema, `npm run api:generate` has to be run and its output committed — a deliberate trade-off recorded in ADR 0003. The main workflows were also exercised against PostgreSQL and reviewed in desktop and mobile browser layouts.
 
-Behaviour that a unit test cannot settle was measured against the running application rather than asserted. The rate limit was confirmed by hammering a limited route until it returned 429s rather than assuming the plugin was wired up.
+Behaviour that a unit test cannot settle was measured against the running application rather than asserted. The login rate limit was confirmed by hammering it until it returned 429s rather than assuming the plugin was wired up.
 

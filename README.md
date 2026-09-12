@@ -93,10 +93,11 @@ server counterpart, so the loop stops with the tab.
 
 Its actions are ordinary commands over the same REST endpoints a click uses, so each one
 is version-checked, audited and pushed back over SSE exactly like a human's, and the
-table, exposure strip and audit timeline all move on their own. That is 125 requests a
-minute against the API's 500-a-minute budget, measured against the running server. A
-moved trade is dropped and the loop carries on, but five consecutive failures — an
-expired session, say — stop it rather than letting it retry twice a second forever.
+table, exposure strip and audit timeline all move on their own. That is around 125
+requests a minute, measured against the running server; nothing throttles it, since login
+is the only rate-limited route. A moved trade is dropped and the loop carries on, but five
+consecutive failures — an expired session, say — stop it rather than letting it retry
+twice a second forever.
 
 ## The Container Image
 
@@ -134,6 +135,8 @@ Amend, execute, and cancel commands include `expectedVersion`. The database upda
 Every failure — a validation error, a stale version, a terminal trade, an unknown route — returns the same `{ code, message, details? }` envelope from one error handler, and every status code is in the OpenAPI document.
 
 REST handles commands and queries. Authenticated SSE at `/api/events` carries asynchronous changes as the **canonical trade**, validated against the generated `TradeEvent` schema before use. The stream is a notification channel, not the source of truth: an event invalidates the TanStack Query cache and the blotter refetches from REST, so the screen can only ever show state the server has confirmed. The full state is also refetched on connect and on every reconnect, so a notification missed while disconnected cannot leave the blotter stale.
+
+Each audit event also carries a `streamSequence`: a PostgreSQL `BIGSERIAL` assigned as the row is inserted, inside the same transaction as the trade change. `tradeVersion` orders one trade's own history and cannot say whether one trade's amendment came before or after another's booking; `streamSequence` orders the whole log, so it is what the stream uses as its cursor. It is the SSE frame's `id`, which means a browser reconnecting sends it back in `Last-Event-ID` on its own, and the server replays `WHERE "streamSequence" > $1 ORDER BY "streamSequence" ASC` — exactly the events committed while that client was away. Because the number comes from the database rather than from a process, several application instances share one ordering, and a restart loses nothing. Gaps are expected and harmless: a rolled-back transaction keeps the value it drew. It crosses the wire as a decimal string — a `BIGINT` past 2^53 is not exact in a JSON number, and a cursor that rounds resumes from the wrong event.
 
 The exposure aggregates are refetched alongside the table on the same signal. They are summed in SQL across every trade matching the current filter, never over the loaded page, so the strip always describes the same set of trades as the rows beneath it. They cross the wire as decimal strings and are formatted with `decimal.js`, never floats — a sum of `quantity * price` across a book can exceed the range a JSON number represents exactly.
 

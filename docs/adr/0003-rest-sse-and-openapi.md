@@ -36,6 +36,29 @@ This is a deliberate scope cut for an exercise, recorded here because it is the
 first thing to revisit if the blotter ever faces real volume. The simple version
 is correct at any scale — it is only wasteful.
 
+**How a client resumes after a drop.** Every event frame is identified by the
+audit event's `streamSequence`, assigned by a PostgreSQL sequence inside the
+same transaction as the trade change it records. That gives the log a total
+order, which `tradeVersion` cannot: a version ranks one trade's own history and
+says nothing about two trades against each other. A browser already echoes the
+last id it saw in `Last-Event-ID`, so a reconnect is answered by replaying
+everything after that cursor, oldest first, and no client-side bookkeeping is
+needed to take part.
+
+Keeping the cursor in the database rather than in the process is what makes this
+correct beyond one instance: several replicas draw from the same sequence, a
+restart loses nothing, and no application code has to ask what the last number
+was. Gaps are accepted — a rolled-back transaction keeps the value it drew — and
+cost nothing, because the cursor is only ever compared, never counted.
+
+Two consequences are deliberate. The replay runs *after* the connection joins
+the broadcast, so the overlap between the two is duplicate frames rather than a
+gap, and a duplicate is already harmless. And it is bounded: past that bound a
+returning client is short of events the stream will not send, which is precisely
+what the refetch it performs on every connect is for. REST stays authoritative
+either way; replay narrows the window in which the table is behind, it does not
+replace the refetch.
+
 The generated client, validators and `openapi/openapi.json` are committed, so a
 clone builds and runs without a code-generation step. The cost is that
 regeneration is manual: after changing a backend Zod schema, run

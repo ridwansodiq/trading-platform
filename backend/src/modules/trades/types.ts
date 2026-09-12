@@ -84,3 +84,23 @@ export type TradeAuditEventRecord = Omit<TradeAuditEventDraft, "tradeId"> & {
   id: string;
   createdAt: string;
 };
+
+/**
+ * A committed audit event, in the shape the notification stream carries it.
+ *
+ * Every mutation produces exactly one, so this doubles as what a repository
+ * returns from a write and as what a reconnecting client is replayed — the same
+ * event either way, which is why a replayed frame is indistinguishable from the
+ * live one it repeats.
+ *
+ * `streamSequence` is the row's `BIGINT` rendered as a string: it leaves the
+ * repository already converted, because JSON has no bigint and an SSE id is
+ * text on the wire regardless.
+ */
+export type TradeEvent = {
+  id: string;
+  eventType: TradeAuditEventType;
+  trade: TradeState;
+  occurredAt: string;
+  streamSequence: string;
+};

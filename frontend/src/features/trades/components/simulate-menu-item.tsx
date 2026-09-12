@@ -1,7 +1,13 @@
-import { useSyncExternalStore } from "react";
+import { useEffect, useSyncExternalStore } from "react";
 import { Play, Square } from "lucide-react";
 import { toast } from "sonner";
-import { amendTrade, createTrade, listTrades } from "@/api/generated/endpoints/trades/trades";
+import {
+  amendTrade,
+  cancelTrade,
+  createTrade,
+  executeTrade,
+  listTrades
+} from "@/api/generated/endpoints/trades/trades";
 import { ok } from "@/api/unwrap";
 import { DropdownMenuItem } from "@/components/ui/dropdown-menu";
 import type { Trade } from "@/api/generated/models";
@@ -10,16 +16,24 @@ import type { Trade } from "@/api/generated/models";
  * The demo pulse, driven entirely from the browser.
  *
  * **Simulate** starts a loop that runs two actions a second until it is
- * stopped: every third one books a fresh trade, the rest nudge the price or
- * quantity of a live trade from the first page. Each action is an ordinary REST
- * command over the same endpoints a human's clicks use, so it is
- * version-checked, audited and streamed back like any other — the blotter picks
- * the results up over SSE, which is why nothing here touches the query cache.
+ * stopped: every third one books a fresh trade, and the rest move a live one —
+ * mostly nudging its price or quantity, sometimes executing or cancelling it
+ * outright. Each action is an ordinary REST command over the same endpoints a
+ * human's
+ * clicks use, so it is version-checked, audited and streamed back like any
+ * other — the blotter picks the results up over SSE, which is why nothing here
+ * touches the query cache.
  *
- * That is 120 commands a minute plus a listing every twenty seconds or so,
- * against the API's 500-a-minute budget. Raising the rate here is what would
- * start returning 429s, and the share spent on bookings is what decides how
- * often the pool has to be refilled.
+ * What it moves is what the user is looking at: `useSimulationSource` publishes
+ * the blotter's current rows, so the amendments, fills and cancellations land
+ * on the page in view — under whatever filter, sort and page the desk has
+ * chosen — rather than on trades scrolled past. It falls back to reading the
+ * first page itself only when the screen offers nothing live to act on.
+ *
+ * That is 120 commands a minute. Nothing on the API throttles them — login is
+ * the only rate-limited route — so `TICK_MS` is the only ceiling there is, and
+ * the share spent on bookings is what keeps the blotter ahead of the trades it
+ * retires.
  *
  * It calls the generated endpoints rather than `useTradeMutations` because the
  * loop runs at module scope, outside React — and because those hooks invalidate
@@ -31,6 +45,18 @@ import type { Trade } from "@/api/generated/models";
  */
 const TICK_MS = 500;
 const ACTIONS_PER_BOOKING = 3;
+/**
+ * How the actions that move an existing trade divide up; the remainder amend,
+ * which is both the commonest thing a desk does and the only one of the three
+ * that leaves the trade live.
+ *
+ * Executing and cancelling are terminal, so together they set the rate the
+ * blotter retires trades at, and bookings have to stay ahead of it or a long
+ * run drains the book. Three in ten of two thirds is 0.2 retirements an action
+ * against 0.33 bookings — five to three, which keeps it filling up.
+ */
+const EXECUTE_SHARE = 0.2;
+const CANCEL_SHARE = 0.1;
 const PAGE_SIZE = 25;
 
 /**
@@ -68,8 +94,19 @@ let ticks = 0;
 let actionsRun = 0;
 let failures = 0;
 
-/** Live trades left to amend before the first page is read again. */
+/** The blotter's current rows, live-published by `useSimulationSource`. */
+let visible: readonly Trade[] = [];
+
+/** Fallback candidates, read from the first page when the screen offers none. */
 let pool: Trade[] = [];
+
+/**
+ * The version each trade was last acted on at, so the loop does not pick the
+ * same row twice while its own amendment is still in flight — the entry stops
+ * matching as soon as the updated trade arrives over SSE, which puts the trade
+ * back in play, and a cancelled one never comes back as `NEW` at all.
+ */
+const actedVersions = new Map<string, number>();
 
 const listeners = new Set<() => void>();
 
@@ -83,6 +120,23 @@ function subscribe(listener: () => void): () => void {
 function setRunning(next: boolean): void {
   running = next;
   for (const listener of listeners) listener();
+}
+
+/**
+ * Publishes the rows the blotter is showing to the loop.
+ *
+ * It is a hook on the screen rather than a prop on the menu item because the
+ * dropdown unmounts the item as it closes: the loop has to keep seeing the
+ * table long after the menu that started it is gone.
+ */
+export function useSimulationSource(views: readonly Trade[]): void {
+  useEffect(() => {
+    // Only `NEW` trades can be amended or cancelled; the rest are terminal.
+    visible = views.filter((view) => view.status === "NEW");
+    return () => {
+      visible = [];
+    };
+  }, [views]);
 }
 
 function book(): Promise<unknown> {
@@ -107,20 +161,39 @@ function nudge(trade: Trade): Promise<unknown> {
   });
 }
 
+function fill(trade: Trade): Promise<unknown> {
+  return executeTrade(trade.id, { expectedVersion: trade.version });
+}
+
+function kill(trade: Trade): Promise<unknown> {
+  return cancelTrade(trade.id, { expectedVersion: trade.version });
+}
+
+/** One roll across the three, so the shares are read off a single number. */
+function move(trade: Trade): Promise<unknown> {
+  const roll = Math.random();
+  if (roll < EXECUTE_SHARE) return fill(trade);
+  if (roll < EXECUTE_SHARE + CANCEL_SHARE) return kill(trade);
+  return nudge(trade);
+}
+
+const isFree = (trade: Trade): boolean => actedVersions.get(trade.id) !== trade.version;
+
 /**
- * One action.
+ * The trade to move next.
  *
- * A trade leaves the pool when it is picked and is never put back, so the pool
- * drains in about twenty seconds and the refill follows the real first page —
- * including the trades this loop has just booked.
+ * The screen comes first, so the desk watches its own rows change; the first
+ * page is read only when the screen has nothing left — an empty blotter, a
+ * filter that excludes every live trade, or every visible row already moved and
+ * not yet streamed back.
+ *
+ * A pooled trade leaves the pool when it is picked and is never put back, so
+ * the fallback refill follows the real first page, including the trades this
+ * loop has just booked.
  */
-async function act(): Promise<void> {
-  const booking = ticks % ACTIONS_PER_BOOKING === 0;
-  ticks += 1;
-  if (booking) {
-    await book();
-    return;
-  }
+async function nextTarget(): Promise<Trade | undefined> {
+  const onScreen = visible.filter(isFree);
+  if (onScreen.length > 0) return pick(onScreen);
 
   if (pool.length === 0) {
     const page = ok(
@@ -135,9 +208,29 @@ async function act(): Promise<void> {
     pool = [...page.data].sort(() => Math.random() - 0.5);
   }
 
-  const trade = pool.pop();
-  // Nothing live to amend yet, so put the tick towards making one.
-  await (trade ? nudge(trade) : book());
+  let trade = pool.pop();
+  while (trade && !isFree(trade)) trade = pool.pop();
+  return trade;
+}
+
+/** One action: book a trade, or amend, execute or cancel one already live. */
+async function act(): Promise<void> {
+  const booking = ticks % ACTIONS_PER_BOOKING === 0;
+  ticks += 1;
+  if (booking) {
+    await book();
+    return;
+  }
+
+  const trade = await nextTarget();
+  // Nothing live to move yet, so put the tick towards making one.
+  if (!trade) {
+    await book();
+    return;
+  }
+
+  actedVersions.set(trade.id, trade.version);
+  await move(trade);
 }
 
 /**
@@ -191,9 +284,10 @@ function start(): void {
   actionsRun = 0;
   failures = 0;
   pool = [];
+  actedVersions.clear();
   setRunning(true);
   toast.success("Simulation started", {
-    description: "Booking and moving trades until you stop it."
+    description: "Booking, amending, executing and cancelling trades until you stop it."
   });
   // Act immediately rather than making the first tick wait out the interval.
   void tick();

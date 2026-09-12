@@ -29,10 +29,52 @@ const newTradePayload = () => ({
   tradeTimestamp: new Date().toISOString()
 });
 
+/** How long a stream read waits before giving up and asserting on what arrived. */
+const STREAM_READ_TIMEOUT_MS = 5_000;
+
+type SseFrame = { id?: string; event?: string; data?: string };
+
+/** Splits the raw stream into frames, which are blank-line separated. */
+function parseSseFrames(buffer: string): SseFrame[] {
+  return buffer
+    .split("\n\n")
+    .filter((block) => block.trim().length > 0)
+    .map((block) => {
+      const frame: SseFrame = {};
+      for (const line of block.split("\n")) {
+        const separator = line.indexOf(":");
+        const field = line.slice(0, separator);
+        const value = line.slice(separator + 1).trimStart();
+        if (field === "id") frame.id = value;
+        if (field === "event") frame.event = value;
+        if (field === "data") frame.data = value;
+      }
+      return frame;
+    });
+}
+
+type StreamedTradeEvent = {
+  eventType: string;
+  streamSequence: string;
+  trade: { id: string; version: number };
+};
+
+/** The trade updates among a stream's frames, paired with their SSE id. */
+function tradeUpdates(frames: SseFrame[]): { id: string; event: StreamedTradeEvent }[] {
+  return frames
+    .filter((frame) => frame.event === "trade-update")
+    .map((frame) => ({
+      id: frame.id!,
+      event: JSON.parse(frame.data!) as StreamedTradeEvent
+    }));
+}
+
 describe("trade workflow", () => {
   let app: FastifyInstance;
   let cookie: string;
   let userId: string;
+  /** Set once the suite needs a listening socket; see `streamOrigin`. */
+  let origin: string | undefined;
   const created: string[] = [];
 
   async function login(): Promise<string> {
@@ -58,6 +100,67 @@ describe("trade workflow", () => {
   }
 
   const get = (url: string) => app.inject({ method: "GET", url, headers: { cookie } });
+
+  const amend = (tradeId: string, expectedVersion: number, changes: Record<string, unknown>) =>
+    app.inject({
+      method: "PATCH",
+      url: `/api/trades/${tradeId}`,
+      headers: { cookie },
+      payload: { expectedVersion, ...changes }
+    });
+
+  /**
+   * The stream is read over a real socket rather than through `app.inject`: the
+   * response is hijacked and never ends, so an injected request would never
+   * resolve. It has to be *this* app, because an event only reaches the broker
+   * of the instance that handled the command that produced it.
+   */
+  const streamOrigin = async () => (origin ??= await app.listen({ port: 0, host: "127.0.0.1" }));
+
+  /**
+   * Opens the stream, optionally books trades once it is established, and reads
+   * frames until `isEnough` is satisfied or the read times out. The socket is
+   * closed either way; a timeout returns what did arrive, so a failure reads as
+   * a missing frame rather than as a hung test.
+   */
+  async function readStream(
+    headers: Record<string, string>,
+    isEnough: (frames: SseFrame[]) => boolean,
+    act?: () => Promise<void>
+  ): Promise<SseFrame[]> {
+    const controller = new AbortController();
+    const response = await fetch(`${await streamOrigin()}/api/events`, {
+      headers: { cookie, ...headers },
+      signal: controller.signal
+    });
+    expect(response.status).toBe(200);
+    expect(response.headers.get("content-type")).toContain("text/event-stream");
+
+    const reader = response.body!.getReader();
+    const decoder = new TextDecoder();
+    const expiry = setTimeout(() => controller.abort(), STREAM_READ_TIMEOUT_MS);
+    let buffer = "";
+    let frames: SseFrame[] = [];
+
+    try {
+      // Only now that the stream is live, so nothing it publishes is missed.
+      if (act) await act();
+
+      while (!isEnough(frames)) {
+        const { value, done } = await reader.read();
+        if (done) break;
+        buffer += decoder.decode(value, { stream: true });
+        frames = parseSseFrames(buffer);
+      }
+    } catch {
+      // An aborted read is how the timeout arrives; assert on what we have.
+    } finally {
+      clearTimeout(expiry);
+      controller.abort();
+    }
+
+    return frames;
+  }
 
   beforeAll(async () => {
     app = await buildApp();
@@ -94,6 +197,9 @@ describe("trade workflow", () => {
     await prisma.trade.deleteMany({ where: { traderUserId: userId } });
     await prisma.session.deleteMany({ where: { userId } });
     await prisma.user.deleteMany({ where: { id: userId } });
+    // `close()` waits on open connections and a hijacked SSE response never
+    // ends on its own, so draining first is what keeps teardown instant.
+    app.drainRealtime();
     await app.close();
     await prisma.$disconnect();
   });
@@ -508,6 +614,125 @@ describe("trade workflow", () => {
     const body = JSON.stringify(me.json());
     expect(body).not.toMatch(/passwordHash|argon2|tokenHash/i);
     expect(Object.keys(me.json().user).sort()).toEqual(["desk", "displayName", "email", "id"]);
+  });
+
+  describe("the event stream's global sequence", () => {
+    /** Where the stream has got to overall, as a client's cursor would be. */
+    const latestStreamSequence = async () =>
+      (
+        await prisma.tradeAuditEvent.aggregate({ _max: { streamSequence: true } })
+      )._max.streamSequence!.toString();
+
+    it("orders audit events across trades, not only within one", async () => {
+      const first = (await createTrade()).json().id;
+      const second = (await createTrade()).json().id;
+      expect((await amend(first, 1, { quantity: 150 })).statusCode).toBe(200);
+
+      const events = await prisma.tradeAuditEvent.findMany({
+        where: { tradeId: { in: [first, second] } },
+        orderBy: { streamSequence: "asc" },
+        select: { tradeId: true, tradeVersion: true, streamSequence: true }
+      });
+
+      /*
+       * The point of the column: `tradeVersion` says first-v1 and second-v1 are
+       * both "1" and cannot rank them, while the stream sequence puts all three
+       * events in the order they were committed, across trades.
+       */
+      expect(events.map((event) => [event.tradeId, event.tradeVersion])).toEqual([
+        [first, 1],
+        [second, 1],
+        [first, 2]
+      ]);
+
+      const sequences = events.map((event) => event.streamSequence);
+      expect(sequences[0]! < sequences[1]!).toBe(true);
+      expect(sequences[1]! < sequences[2]!).toBe(true);
+      // Assigned by the database, so it is a bigint all the way out of Prisma.
+      expect(typeof sequences[0]).toBe("bigint");
+    });
+
+    it("identifies each frame with the stream sequence its payload carries", async () => {
+      let tradeId = "";
+
+      const frames = await readStream({}, (read) => tradeUpdates(read).length >= 2, async () => {
+        tradeId = (await createTrade()).json().id;
+        expect((await amend(tradeId, 1, { quantity: 150 })).statusCode).toBe(200);
+      });
+
+      const updates = tradeUpdates(frames);
+      expect(updates).toHaveLength(2);
+
+      // The id on the wire is what the payload says, because that is the value
+      // a browser hands back in `Last-Event-ID`.
+      for (const { id, event } of updates) {
+        expect(id).toBe(event.streamSequence);
+        expect(event.trade.id).toBe(tradeId);
+      }
+
+      expect(updates.map(({ event }) => event.eventType)).toEqual(["CREATED", "AMENDED"]);
+      expect(BigInt(updates[0]!.id) < BigInt(updates[1]!.id)).toBe(true);
+
+      // And it is the audit row's own sequence, not a number invented to send.
+      const stored = await prisma.tradeAuditEvent.findMany({
+        where: { tradeId },
+        orderBy: { streamSequence: "asc" },
+        select: { streamSequence: true }
+      });
+      expect(stored.map((event) => event.streamSequence.toString())).toEqual(
+        updates.map(({ id }) => id)
+      );
+    });
+
+    it("replays what a reconnecting client missed, and not what it already had", async () => {
+      /*
+       * Booked with nobody listening, so the events exist only in the audit
+       * log. Recovering them is the whole point: an in-memory buffer would not
+       * survive a restart, and would not be shared by a second instance.
+       */
+      const tradeId = (await createTrade()).json().id;
+      expect((await amend(tradeId, 1, { quantity: 150 })).statusCode).toBe(200);
+
+      const events = await prisma.tradeAuditEvent.findMany({
+        where: { tradeId },
+        orderBy: { streamSequence: "asc" },
+        select: { streamSequence: true }
+      });
+      const [createdEvent, amendedEvent] = events.map((event) => event.streamSequence.toString());
+
+      // Reconnecting as a client that saw the booking but dropped before the
+      // amendment.
+      const frames = await readStream(
+        { "last-event-id": createdEvent! },
+        (read) => tradeUpdates(read).length >= 1
+      );
+
+      const updates = tradeUpdates(frames);
+      expect(updates.map(({ id }) => id)).toEqual([amendedEvent]);
+      expect(updates[0]!.event.trade.version).toBe(2);
+      // Strictly after the cursor: the event it named is one it already has.
+      expect(updates.map(({ event }) => event.streamSequence)).not.toContain(createdEvent);
+    });
+
+    it("ignores a cursor it did not issue rather than failing the connection", async () => {
+      const cursor = await latestStreamSequence();
+      let tradeId = "";
+
+      const frames = await readStream(
+        { "last-event-id": "not-a-sequence" },
+        (read) => tradeUpdates(read).length >= 1,
+        async () => {
+          tradeId = (await createTrade()).json().id;
+        }
+      );
+
+      const updates = tradeUpdates(frames);
+      // The stream still runs and still delivers live events; it simply
+      // replays nothing, which is what a first connection gets anyway.
+      expect(updates).toHaveLength(1);
+      expect(updates[0]!.event.trade.id).toBe(tradeId);
+      expect(BigInt(updates[0]!.id) > BigInt(cursor)).toBe(true);
+    });
   });
 
   it("404s for an unknown trade rather than returning empty history", async () => {

@@ -2,7 +2,7 @@ import { randomBytes, randomUUID } from "node:crypto";
 import type { AmendTradeDto } from "../schemas/amend-trade";
 import type { CreateTradeDto } from "../schemas/create-trade";
 import type { ExposureDto, ListFilterOptionsDto, ListTradesDto } from "../schemas/list-trades";
-import type { TradeAuditEventRecord, TradeState } from "../types";
+import type { TradeAuditEventRecord, TradeEvent, TradeState } from "../types";
 import type { TransitionTradeDto } from "../schemas/transition-trade";
 import { TradeAlreadyExistsError, TradeNotFoundError } from "../errors/trade";
 import type { TradeAuditRepository } from "../repositories/trade-audit";
@@ -16,8 +16,16 @@ import { decideAmend, decideCreate, decideTransition } from "./trade-lifecycle";
 /** Notified after a mutation commits. Kept as a narrow port so the service does
  * not depend on the SSE transport. */
 export type TradeEventPublisher = {
-  publish(eventType: TradeState["status"] | "AMENDED" | "CREATED", trade: TradeState): void;
+  publish(event: TradeEvent): void;
 };
+
+/**
+ * Upper bound on one `Last-Event-ID` replay, so a client returning from a long
+ * absence cannot ask the database to walk the whole audit log. Past it the
+ * client is short of events the stream will not send, which is exactly the
+ * situation its refetch-on-connect already covers.
+ */
+const MAX_REPLAY_EVENTS = 500;
 
 /**
  * How many times a generated trade reference is retried after colliding.
@@ -73,19 +81,28 @@ export class TradeService {
     return this.audit.listForTrade(id);
   }
 
+  /**
+   * Events committed after a point in the global stream, oldest first.
+   *
+   * Backs the SSE stream's reconnection replay. It reads the audit log rather
+   * than any in-memory buffer, so it answers the same across every application
+   * instance and survives a restart.
+   */
+  async listEventsSince(afterStreamSequence: string): Promise<TradeEvent[]> {
+    return this.audit.listSince(afterStreamSequence, MAX_REPLAY_EVENTS);
+  }
+
   async create(input: CreateTradeDto): Promise<TradeState> {
-    const trade = await this.insertWithFreshReference(input);
-    this.events.publish("CREATED", trade);
-    return trade;
+    return this.publishCommitted(await this.insertWithFreshReference(input));
   }
 
   async amend(input: AmendTradeDto): Promise<TradeState> {
     const current = await this.trades.findById(input.tradeId);
     const decision = decideAmend(current, input.changes, input.expectedVersion, input.actor);
 
-    const trade = await this.trades.applyMutationWithAudit(input.expectedVersion, decision);
-    this.events.publish("AMENDED", trade);
-    return trade;
+    return this.publishCommitted(
+      await this.trades.applyMutationWithAudit(input.expectedVersion, decision)
+    );
   }
 
   async transition(input: TransitionTradeDto): Promise<TradeState> {
@@ -97,13 +114,26 @@ export class TradeService {
       input.actor
     );
 
-    const trade = await this.trades.applyMutationWithAudit(input.expectedVersion, decision);
-    this.events.publish(decision.audit.eventType, trade);
-    return trade;
+    return this.publishCommitted(
+      await this.trades.applyMutationWithAudit(input.expectedVersion, decision)
+    );
+  }
+
+  /**
+   * Notify, then answer the caller with the trade that was stored.
+   *
+   * The event is the committed audit row, so the notification carries the same
+   * identity, timestamp and `streamSequence` the log recorded — which is what
+   * lets a replayed frame be the event it repeats rather than a reconstruction
+   * of it.
+   */
+  private publishCommitted(event: TradeEvent): TradeState {
+    this.events.publish(event);
+    return event.trade;
   }
 
   /** Redraw the reference and retry if the generated one is already taken. */
-  private async insertWithFreshReference(input: CreateTradeDto): Promise<TradeState> {
+  private async insertWithFreshReference(input: CreateTradeDto): Promise<TradeEvent> {
     for (let attempt = 1; ; attempt += 1) {
       const decision = decideCreate({
         id: randomUUID(),

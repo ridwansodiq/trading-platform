@@ -85,12 +85,23 @@ export async function buildApp() {
   await app.register(cors, { origin: env.FRONTEND_ORIGIN, credentials: true });
   await app.register(cookie);
   /*
+   * Registered but not applied: `global: false` limits only the routes that ask
+   * for it in their own `config.rateLimit`, which today means login alone.
+   *
+   * A blanket limit across the API was the wrong shape for this app. Every
+   * other route is behind a session cookie, so an authenticated client
+   * hammering the blotter is a capacity question rather than an abuse one, and
+   * a ceiling low enough to deter abuse is one a legitimately busy desk — or a
+   * second browser tab, since the limit keys on IP — reaches first. Login is
+   * different: it is unauthenticated and it is the one endpoint worth guessing
+   * at, so it is the one that is throttled.
+   *
    * The store is per-process. One instance is the deployment today, but behind
    * more than one the effective limit multiplies by the instance count — the
-   * login route's 10/minute becomes 10 per instance. Running replicas means
-   * giving this plugin a shared Redis store, not raising the numbers.
+   * login route's 5/minute becomes 5 per instance. Running replicas means
+   * giving this plugin a shared Redis store, not raising the number.
    */
-  await app.register(rateLimit, { max: 500, timeWindow: "1 minute" });
+  await app.register(rateLimit, { global: false });
 
   /*
    * The built SPA, when one is mounted. Development leaves this unset: Vite
@@ -144,7 +155,12 @@ export async function buildApp() {
   await app.register(auth.routes);
   await app.register(trades.routes);
   await app.register(
-    createSseRoutes({ broker, requireAuth: auth.requireAuth, isSessionValid: auth.isSessionValid })
+    createSseRoutes({
+      broker,
+      requireAuth: auth.requireAuth,
+      isSessionValid: auth.isSessionValid,
+      replayEvents: trades.replayEvents
+    })
   );
 
   /**
