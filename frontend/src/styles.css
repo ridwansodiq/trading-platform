@@ -274,6 +274,16 @@
   }
 }
 
+/*
+ * Sonner paints the toast description with its own hardcoded greys (#3f3f3f in
+ * light, near-white in dark) rather than the vars it exposes, so the secondary
+ * line sits off the blotter palette. Its own rule is three attribute selectors
+ * deep and injected after this sheet, hence the extra ancestor here.
+ */
+[data-sonner-toaster] [data-sonner-toast][data-styled="true"] [data-description] {
+  color: var(--ink-3);
+}
+
 @layer utilities {
   /* Motion inventory — 120–200ms ease-out, opacity/translate only */
   .fusion-tick-up {
