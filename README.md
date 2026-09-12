@@ -6,28 +6,49 @@ The backend is a **modular monolith using Service and Repository layers**: organ
 
 ## Quick Start
 
-Requirements: Node.js 22+, npm, and Docker.
+Requires Docker, and nothing else.
 
 ```bash
-npm install
-docker compose up -d postgres
-npm run db:migrate -w backend
-npm run db:seed -w backend
-npm run dev
+docker compose up --build
 ```
 
-Open `http://localhost:5173` and sign in with:
+Open `http://localhost:3001` and sign in with:
 
 ```text
 alice.morgan@fusion.local
 Fusion123!
 ```
 
-The backend runs on `http://localhost:3001`. PostgreSQL is exposed on host port `5435` to avoid common local conflicts.
+One command builds both workspaces, starts PostgreSQL, applies migrations, seeds
+5,000 demo trades, and serves the API and the built SPA from a single origin. The
+first build takes a couple of minutes; after that `docker compose up` is seconds.
+Stop with `docker compose down`, or `docker compose down -v` to discard the database.
+
+## Development
+
+Requirements: Node.js 22 (see [.nvmrc](./.nvmrc)), npm, and Docker.
+
+```bash
+npm install
+cp backend/.env.example backend/.env
+docker compose up -d postgres
+npm run db:migrate -w backend
+npm run db:seed -w backend
+npm run dev
+```
+
+Open `http://localhost:5173`; Vite proxies `/api` to the backend on `http://localhost:3001`.
+PostgreSQL is exposed on host port `5435` to avoid common local conflicts.
+
+`docker compose up -d postgres` starts only the database, so this workflow is
+unaffected by the full stack above. `npm install` generates the Prisma client, so
+`npm run typecheck` and the unit tests work on a fresh clone before any database
+exists.
 
 ## Useful Commands
 
 ```bash
+docker compose up --build   # the whole application: database, API, SPA
 npm run dev                 # backend and frontend with hot reload
 npm run verify              # types, lint, boundaries, tests, builds
 npm run lint:boundaries     # proves the architecture rules actually reject violations
@@ -57,6 +78,11 @@ The integration tests provision their own user and clean up after themselves, so
 `npm run test` works against a migrated but unseeded database and leaves seeded data
 untouched. Seeding is for the demo UI.
 
+There is no separate test database: the integration tests read the same `DATABASE_URL`
+as development, and isolate themselves by tagging every row they create rather than by
+connecting elsewhere. An aborted run therefore leaves `integration-*@fusion.local` users
+and `TEST-*` trades behind.
+
 ### Live demo simulation
 
 The seed gives the blotter a book; **Simulate** in the user menu gives it a pulse. It
@@ -72,19 +98,28 @@ minute against the API's 500-a-minute budget, measured against the running serve
 moved trade is dropped and the loop carries on, but five consecutive failures — an
 expired session, say — stop it rather than letting it retry twice a second forever.
 
-## Running The Built Image
+## The Container Image
 
-```bash
-docker compose --profile app up --build
-```
+`docker compose up` runs two services: PostgreSQL, and one image built from
+[backend/Dockerfile](./backend/Dockerfile) that carries the compiled API, the compiled
+seed and the built SPA. Its entrypoint applies migrations, seeds if asked, then `exec`s
+the server — `exec` so SIGTERM reaches Fastify and it can drain its SSE streams rather
+than being killed when the stop grace period runs out.
 
-Builds `backend/Dockerfile`, applies migrations, and serves the API on `:3001` against the
-same PostgreSQL container. Plain `docker compose up -d postgres` still starts only the
-database for the usual `npm run dev` workflow.
+The API serves the SPA itself when `SPA_DIR` is set, which is what collapses the demo
+onto one origin: no CORS preflight, no cross-site cookie, and no reverse proxy in front
+of an SSE stream waiting to buffer it. Development leaves `SPA_DIR` unset, so the backend
+stays a pure API and Vite serves the app.
 
-Configuration is validated at startup; see [.env.example](./.env.example) for every variable.
-Swagger UI at `/api/docs` is served outside production and must be opted into with
-`ENABLE_API_DOCS=true` in it.
+Two settings exist only because the demo is reached over plain HTTP on localhost:
+`SESSION_COOKIE_SECURE=false`, since some browsers drop a `Secure` cookie there and login
+would fail silently; and `FRONTEND_ORIGIN=http://localhost:3001`, which CORS never
+actually consults while everything is same-origin. Anything terminating TLS should leave
+both alone.
+
+Configuration is validated at startup; see [backend/.env.example](./backend/.env.example)
+for every variable. Swagger UI at `/api/docs` is served outside production and must be
+opted into with `ENABLE_API_DOCS=true` in it.
 
 ## Domain Model
 
@@ -122,7 +157,8 @@ backend/src/modules/auth/               identity, sessions, requireAuth middlewa
 backend/src/realtime/sse/               SSE broker, stream route, trade publisher
 backend/src/infrastructure/             prisma, config, logging, error base
 backend/prisma/                         schema, migrations, and seed
-backend/Dockerfile                      production image for the API
+backend/Dockerfile                      production image: API, seed, and built SPA
+backend/docker-entrypoint.sh            migrate, seed, then exec the server
 
 frontend/src/styles.css                 design tokens (both layers) and theme
 frontend/src/components/ui/             ShadCN primitives, and the combobox built on them

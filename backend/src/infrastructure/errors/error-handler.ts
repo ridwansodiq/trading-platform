@@ -25,8 +25,24 @@ function fieldPath(instancePath: string): string {
   return instancePath.replace(/^\//, "").replace(/\//g, ".") || "(root)";
 }
 
-export function registerErrorHandler(app: FastifyInstance): void {
+/**
+ * @param servesSpa Whether a built SPA is mounted, in which case an unmatched
+ *   GET outside `/api` is a client-side route rather than a missing one. This
+ *   decision lives here because a Fastify instance allows exactly one
+ *   not-found handler per scope — a second registration throws — so the SPA
+ *   fallback has to be a branch inside this one.
+ */
+export function registerErrorHandler(app: FastifyInstance, servesSpa = false): void {
   app.setNotFoundHandler(async (request, reply) => {
+    /*
+     * Anything under /api keeps the JSON envelope, so a mistyped endpoint is
+     * still a 404 with a code rather than an HTML page that `fetch` would try
+     * to parse — the failure a catch-all SPA fallback usually introduces.
+     */
+    if (servesSpa && request.method === "GET" && !request.url.startsWith("/api/")) {
+      return reply.type("text/html").sendFile("index.html");
+    }
+
     const body: ApiErrorBody = {
       code: NOT_FOUND,
       message: `Route ${request.method} ${request.url} does not exist.`

@@ -1,0 +1,13 @@
+{
+  "extends": "../tsconfig.base.json",
+  "compilerOptions": {
+    "target": "ES2022",
+    "module": "ESNext",
+    "moduleResolution": "Bundler",
+    "outDir": "dist/prisma",
+    "rootDir": "prisma",
+    "types": ["node"]
+  },
+  "//": "Emit-only, so the container image can seed itself without shipping tsx. The seed imports nothing from `src` — only dotenv, node builtins, @node-rs/argon2 and @prisma/client, all production dependencies — so it compiles standalone and needs no tsc-alias pass. tsconfig.tools.json still type-checks it.",
+  "include": ["prisma/seed.ts"]
+}

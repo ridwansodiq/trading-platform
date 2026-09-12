@@ -40,6 +40,28 @@ const envSchema = z.object({
   ENABLE_API_DOCS: z
     .enum(["true", "false"])
     .transform((value) => value === "true")
+    .optional(),
+
+  /**
+   * Absolute path to a built SPA. Unset in development, where Vite serves the
+   * app on :5173 and proxies /api here. Set in the container image, where the
+   * API serves the SPA itself so the whole demo is one origin — which removes
+   * the CORS and cross-site-cookie surface rather than configuring around it.
+   */
+  SPA_DIR: z.string().min(1).optional(),
+
+  /**
+   * Whether the session cookie is marked `Secure`. Defaults to on in
+   * production, which is the only correct setting for a real deployment.
+   *
+   * It is overridable because the container demo is reached over plain
+   * http://localhost, and a `Secure` cookie there is dropped by some browsers
+   * — a login that fails silently rather than loudly. Anything terminating TLS
+   * must leave this alone.
+   */
+  SESSION_COOKIE_SECURE: z
+    .enum(["true", "false"])
+    .transform((value) => value === "true")
     .optional()
 });
 
@@ -59,3 +81,6 @@ export const isTest = env.NODE_ENV === "test";
 
 /** Docs default to on everywhere but production, where they must be requested. */
 export const apiDocsEnabled = env.ENABLE_API_DOCS ?? !isProduction;
+
+/** Secure cookies default to on in production; see SESSION_COOKIE_SECURE. */
+export const sessionCookieSecure = env.SESSION_COOKIE_SECURE ?? isProduction;

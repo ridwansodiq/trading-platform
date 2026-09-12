@@ -1,6 +1,6 @@
 import { createHash, randomBytes } from "node:crypto";
 import { hash, verify } from "@node-rs/argon2";
-import { env, isProduction } from "../../../infrastructure/config/env";
+import { env, sessionCookieSecure } from "../../../infrastructure/config/env";
 import type { AuthenticatedUser, EstablishedSession, LoginDto } from "../types";
 import { InvalidCredentialsError } from "../errors/auth";
 import type { SessionRepository } from "../repositories/session";
@@ -37,7 +37,7 @@ export class AuthService {
   readonly cookieOptions = {
     httpOnly: true,
     sameSite: "lax" as const,
-    secure: isProduction,
+    secure: sessionCookieSecure,
     path: "/",
     maxAge: env.SESSION_TTL_HOURS * 60 * 60
   };

@@ -8,5 +8,5 @@
     "types": ["node"]
   },
   "//": "Everything that runs through tsx rather than being built: tests, the seed, the OpenAPI generator and the Vitest config. Type-checked, never emitted.",
-  "include": ["src", "scripts", "prisma", "vitest.config.ts"]
+  "include": ["src", "scripts", "prisma", "prisma.config.ts", "vitest.config.ts"]
 }

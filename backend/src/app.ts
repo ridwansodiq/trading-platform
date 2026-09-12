@@ -1,7 +1,9 @@
+import { resolve } from "node:path";
 import cookie from "@fastify/cookie";
 import cors from "@fastify/cors";
 import helmet from "@fastify/helmet";
 import rateLimit from "@fastify/rate-limit";
+import fastifyStatic from "@fastify/static";
 import swagger from "@fastify/swagger";
 import swaggerUi from "@fastify/swagger-ui";
 import Fastify from "fastify";
@@ -74,8 +76,9 @@ export async function buildApp() {
   }
 
   await app.register(helmet, {
-    // The API returns JSON and the SPA is served separately, so the strict
-    // default CSP would only break Swagger UI without protecting anything.
+    // Off because the default policy blocks the inline styles Swagger UI needs.
+    // A real deployment behind TLS should set a policy rather than disable it;
+    // that is a deployment concern this take-home does not reach.
     contentSecurityPolicy: false,
     hsts: isProduction
   });
@@ -89,7 +92,35 @@ export async function buildApp() {
    */
   await app.register(rateLimit, { max: 500, timeWindow: "1 minute" });
 
-  registerErrorHandler(app);
+  /*
+   * The built SPA, when one is mounted. Development leaves this unset: Vite
+   * serves the app and proxies /api here, so the backend stays a pure API.
+   * The container image sets it, which collapses the demo onto one origin —
+   * no CORS preflight, no cross-site cookie, and no reverse proxy in front of
+   * an SSE stream waiting to buffer it.
+   *
+   * `wildcard: false` registers the built files as individual routes rather
+   * than a catch-all, so anything unmatched still reaches the not-found
+   * handler — the single place that decides API 404 versus SPA fallback.
+   */
+  if (env.SPA_DIR) {
+    await app.register(fastifyStatic, {
+      root: resolve(env.SPA_DIR),
+      wildcard: false,
+      index: ["index.html"],
+      setHeaders(reply, path) {
+        // Vite fingerprints every asset it emits, so those are immutable.
+        // index.html must not be cached, or a new build stays invisible until
+        // the browser happens to revalidate.
+        reply.header(
+          "cache-control",
+          path.endsWith("index.html") ? "no-cache" : "public, max-age=31536000, immutable"
+        );
+      }
+    });
+  }
+
+  registerErrorHandler(app, Boolean(env.SPA_DIR));
 
   /*
    * Resolve the session for API requests; individual routes decide whether one

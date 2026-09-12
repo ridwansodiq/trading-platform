@@ -15,11 +15,13 @@ services:
     volumes:
       - fusion-postgres:/var/lib/postgresql/data
 
-  # Opt-in: `docker compose --profile app up` runs the built API against the
-  # database above. Plain `docker compose up` still starts only PostgreSQL, so
-  # the usual `npm run dev` workflow is unchanged.
+  # `docker compose up` is the whole application: this image migrates, seeds,
+  # and then serves both the API and the built SPA on one origin.
+  #
+  # `docker compose up -d postgres` still starts only the database, because
+  # naming a service explicitly overrides the default set — so the local
+  # `npm run dev` workflow is unchanged.
   api:
-    profiles: ["app"]
     build:
       context: .
       dockerfile: backend/Dockerfile
@@ -30,12 +32,20 @@ services:
       NODE_ENV: production
       DATABASE_URL: postgresql://fusion:fusion@postgres:5432/fusion?schema=public
       PORT: 3001
-      FRONTEND_ORIGIN: http://localhost:5173
+      # The API serves the SPA, so there is a single origin and CORS never fires.
+      FRONTEND_ORIGIN: http://localhost:3001
+      SPA_DIR: /repo/frontend/dist
+      # The demo is reached over plain http://localhost, where a Secure cookie
+      # is dropped by some browsers and login fails silently. Anything
+      # terminating TLS must leave this unset.
+      SESSION_COOKIE_SECURE: "false"
+      # Applied by the entrypoint before the server starts.
+      RUN_MIGRATIONS: "true"
+      RUN_SEED: "true"
       # Swagger UI describes the whole API surface, so production must ask.
       ENABLE_API_DOCS: "false"
     ports:
       - "3001:3001"
-    command: sh -c "npm run db:deploy && node dist/server.js"
     healthcheck:
       test: ["CMD-SHELL", "wget -qO- http://127.0.0.1:3001/api/health || exit 1"]
       interval: 5s
