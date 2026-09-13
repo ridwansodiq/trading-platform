@@ -12,7 +12,10 @@ Use one Fastify deployable organised first by business module — `trades` and
 `services/`, Prisma and transactions in `repositories/`, HTTP in `routes/`. Each
 module's shared vocabulary — its enums and internal trade representation — sits in
 a single `types.ts` at the module root; request/response shapes and the command
-types derived from them live together in `schemas/`.
+types derived from them live together in `schemas/`. Supporting directories sit
+beside the four layers where a module needs them: `errors/` for the failures a
+module raises, `trades/mappers/` for the row-to-domain translation its raw SQL
+needs, and `auth/middleware/` for the `requireAuth` guard.
 
 Every module exposes an `index.ts`, and cross-module imports resolve through that
 barrel rather than into another module's internals. Cross-cutting `realtime/` and

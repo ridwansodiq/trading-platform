@@ -24,13 +24,21 @@ confirmed.
 
 The cost is one round trip per event, per connected client, and every client
 receives every event — so on a busy desk one trader's burst is a burst of
-requests from every browser. Three changes would address it, and none needs a
-different transport: debounce the refetch into a trailing window; apply the
+requests from every browser. Two changes would address it, and neither needs a
+different transport: debounce the refetch into a trailing window; and apply the
 canonical trade the event already carries straight to the cached page, guarded
 on `version` so duplicate and out-of-order frames stay harmless, and refetch
 only for what a single page cannot settle (membership, ordering, and an
-amendment's missing prior values); and watchdog the 5s heartbeat, since
-`EventSource` can leave a silently dead socket reporting "live" for minutes.
+amendment's missing prior values).
+
+**What the client can say about the connection.** A third gap has since been
+closed. `EventSource` reports a socket it knows to be broken, but a connection
+that dies without a FIN can sit open indefinitely raising nothing, so silence
+past two 5s heartbeats is now treated as a dead stream. The transport's own
+answer is layered under two others: a drop the browser is still retrying reads
+as reconnecting rather than as a dead desk, and a machine with no network is
+named as offline, because the remedy there is the user's rather than the
+server's.
 
 This is a deliberate scope cut for an exercise, recorded here because it is the
 first thing to revisit if the blotter ever faces real volume. The simple version

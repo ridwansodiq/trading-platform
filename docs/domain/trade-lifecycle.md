@@ -25,7 +25,7 @@ A `VERSION_CONFLICT` carries the current trade, so the UI can show the diff with
 
 ## Audit
 
-Audit is mandatory and append-only. Each event records event type, resulting version, actor identity, timestamp, and complete before/after snapshots. The trade mutation and audit insert share one PostgreSQL transaction, so neither can commit alone.
+Audit is mandatory and append-only. Each event records event type, resulting version, actor identity, timestamp, and complete before/after snapshots. It also carries a `streamSequence`, assigned by a PostgreSQL sequence as the row is inserted: `tradeVersion` orders one trade's own history, while this orders every event against every other, which is what a reconnecting SSE client resumes from. The trade mutation and audit insert share one PostgreSQL transaction, so neither can commit alone.
 
 The `after` snapshot is taken from the row the database stored, not from the state the command asked it to store, so the log cannot record a value that was never persisted. Its `createdAt` is the database default: an append-only log is only trustworthy if its clock is the one thing a caller cannot influence.
 
