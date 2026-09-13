@@ -5,7 +5,7 @@
  * OpenAPI spec version: 1.0.0
  */
 
-export interface TransitionTradeCommand {
+export interface TransitionTradeRequest {
   /**
      * @maximum 9007199254740991
      * @exclusiveMinimum 0

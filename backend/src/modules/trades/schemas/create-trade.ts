@@ -13,14 +13,14 @@ export const createTradeSchema = z
     counterparty: z.string().min(1).max(80),
     tradeTimestamp: z.string().datetime()
   })
-  .meta({ id: "CreateTradeCommand" });
+  .meta({ id: "CreateTradeRequest" });
 
 export type CreateTradeBody = z.infer<typeof createTradeSchema>;
 
 /**
- * The validated command plus the one thing the client is never allowed to
+ * The validated request plus the one thing the client is never allowed to
  * supply: who is booking the trade.
  */
-export type CreateTradeDto = CreateTradeBody & {
+export type CreateTradeInput = CreateTradeBody & {
   actor: TradeActor;
 };

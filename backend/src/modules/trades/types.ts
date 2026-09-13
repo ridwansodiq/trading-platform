@@ -45,7 +45,7 @@ export type TradeState = {
 };
 
 /**
- * The state a command intends to write.
+ * The state an operation intends to write.
  *
  * `createdAt` and `updatedAt` are absent deliberately: they belong to the
  * database, which owns the clock. Passing our own values for them is what let

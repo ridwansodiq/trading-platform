@@ -1,7 +1,7 @@
 import { createHash, randomBytes } from "node:crypto";
 import { hash, verify } from "@node-rs/argon2";
 import { env, sessionCookieSecure } from "../../../infrastructure/config/env";
-import type { AuthenticatedUser, EstablishedSession, LoginDto } from "../types";
+import type { AuthenticatedUser, EstablishedSession, LoginInput } from "../types";
 import { InvalidCredentialsError } from "../errors/auth";
 import type { SessionRepository } from "../repositories/session";
 import type { UserRepository } from "../repositories/user";
@@ -24,7 +24,7 @@ const DUMMY_PASSWORD_HASH = await hash(randomBytes(32).toString("hex"), {
  * Credential verification and opaque session lifecycle.
  *
  * Authentication exists here primarily so audit attribution is trustworthy:
- * every trade command records a real, server-resolved user.
+ * every trade operation records a real, server-resolved user.
  */
 export class AuthService {
   constructor(
@@ -42,7 +42,7 @@ export class AuthService {
     maxAge: env.SESSION_TTL_HOURS * 60 * 60
   };
 
-  async login({ email, password }: LoginDto): Promise<EstablishedSession> {
+  async login({ email, password }: LoginInput): Promise<EstablishedSession> {
     const user = await this.users.findByEmail(email);
 
     /*

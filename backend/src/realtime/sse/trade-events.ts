@@ -7,7 +7,7 @@ export const TRADE_UPDATE_EVENT = "trade-update";
  * Publishes committed trade mutations over SSE.
  *
  * The trade service calls this only after its transaction commits, so a
- * rejected or rolled-back command can never produce a notification. The
+ * rejected or rolled-back operation can never produce a notification. The
  * dependency runs service -> publisher and never back.
  *
  * The frame is identified by `streamSequence`, the audit event's place in the

@@ -47,7 +47,7 @@
           "message"
         ]
       },
-      "LoginCommandInput": {
+      "LoginRequestInput": {
         "type": "object",
         "properties": {
           "email": {
@@ -400,7 +400,7 @@
           "streamSequence"
         ]
       },
-      "CreateTradeCommandInput": {
+      "CreateTradeRequestInput": {
         "type": "object",
         "properties": {
           "symbol": {
@@ -449,7 +449,7 @@
           "tradeTimestamp"
         ]
       },
-      "AmendTradeCommandInput": {
+      "AmendTradeRequestInput": {
         "type": "object",
         "properties": {
           "symbol": {
@@ -606,7 +606,7 @@
           "message"
         ]
       },
-      "TransitionTradeCommandInput": {
+      "TransitionTradeRequestInput": {
         "type": "object",
         "properties": {
           "expectedVersion": {
@@ -669,7 +669,7 @@
         ],
         "additionalProperties": false
       },
-      "LoginCommand": {
+      "LoginRequest": {
         "type": "object",
         "properties": {
           "email": {
@@ -1032,7 +1032,7 @@
         ],
         "additionalProperties": false
       },
-      "CreateTradeCommand": {
+      "CreateTradeRequest": {
         "type": "object",
         "properties": {
           "symbol": {
@@ -1082,7 +1082,7 @@
         ],
         "additionalProperties": false
       },
-      "AmendTradeCommand": {
+      "AmendTradeRequest": {
         "type": "object",
         "properties": {
           "symbol": {
@@ -1243,7 +1243,7 @@
         ],
         "additionalProperties": false
       },
-      "TransitionTradeCommand": {
+      "TransitionTradeRequest": {
         "type": "object",
         "properties": {
           "expectedVersion": {
@@ -1307,7 +1307,7 @@
           "content": {
             "application/json": {
               "schema": {
-                "$ref": "#/components/schemas/LoginCommandInput"
+                "$ref": "#/components/schemas/LoginRequestInput"
               }
             }
           }
@@ -1646,7 +1646,7 @@
           "content": {
             "application/json": {
               "schema": {
-                "$ref": "#/components/schemas/CreateTradeCommandInput"
+                "$ref": "#/components/schemas/CreateTradeRequestInput"
               }
             }
           }
@@ -1992,7 +1992,7 @@
           "content": {
             "application/json": {
               "schema": {
-                "$ref": "#/components/schemas/AmendTradeCommandInput"
+                "$ref": "#/components/schemas/AmendTradeRequestInput"
               }
             }
           }
@@ -2176,7 +2176,7 @@
           "content": {
             "application/json": {
               "schema": {
-                "$ref": "#/components/schemas/TransitionTradeCommandInput"
+                "$ref": "#/components/schemas/TransitionTradeRequestInput"
               }
             }
           }
@@ -2283,7 +2283,7 @@
           "content": {
             "application/json": {
               "schema": {
-                "$ref": "#/components/schemas/TransitionTradeCommandInput"
+                "$ref": "#/components/schemas/TransitionTradeRequestInput"
               }
             }
           }

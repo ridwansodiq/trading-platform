@@ -1,9 +1,9 @@
 import { Prisma, type PrismaClient, type Trade as TradeRow } from "@prisma/client";
 import type { Page } from "../../../infrastructure/http/pagination";
 import type {
-  ExposureDto,
-  ListFilterOptionsDto,
-  ListTradesDto,
+  ExposureInput,
+  ListFilterOptionsInput,
+  ListTradesInput,
   TradeFilterField,
   TradeSortKey
 } from "../schemas/list-trades";
@@ -99,7 +99,7 @@ export class TradeRepository {
    * lets them disagree under the default READ COMMITTED isolation, which shows
    * up as a footer that contradicts the rows above it.
    */
-  async list(filters: ListTradesDto): Promise<TradePage> {
+  async list(filters: ListTradesInput): Promise<TradePage> {
     const order = SORT_EXPRESSIONS[filters.sortBy];
     const direction = filters.sortDirection === "asc" ? Prisma.sql`ASC` : Prisma.sql`DESC`;
     const offset = (filters.page - 1) * filters.pageSize;
@@ -129,7 +129,7 @@ export class TradeRepository {
    * JSON number holds exactly, and an exposure total is the last figure on the
    * screen that should be approximate.
    */
-  async exposure(filters: ExposureDto): Promise<TradeExposure> {
+  async exposure(filters: ExposureInput): Promise<TradeExposure> {
     const buy = Prisma.sql`COALESCE(SUM("quantity" * "price") FILTER (WHERE "side" = 'BUY'), 0)`;
     const sell = Prisma.sql`COALESCE(SUM("quantity" * "price") FILTER (WHERE "side" = 'SELL'), 0)`;
 
@@ -170,7 +170,7 @@ export class TradeRepository {
    * load every value once there are thousands, so this runs as a `GROUP BY`.
    */
   async listFilterOptions(
-    input: ListFilterOptionsDto
+    input: ListFilterOptionsInput
   ): Promise<{ values: string[]; hasMore: boolean }> {
     const match = input.search?.trim()
       ? { contains: input.search.trim(), mode: "insensitive" as const }
@@ -255,7 +255,7 @@ export class TradeRepository {
    * Apply a decided mutation with compare-and-swap semantics.
    *
    * The update is conditional on `id`, `expectedVersion` and `status = NEW`, so
-   * a command that raced another one matches no row and the whole transaction
+   * an operation that raced another one matches no row and the whole transaction
    * rolls back. An in-memory version check alone cannot close that window.
    */
   async applyMutationWithAudit(
@@ -295,7 +295,7 @@ export class TradeRepository {
   }
 
   /** Fallback for a page beyond the end of the result set. */
-  private async count(filters: ExposureDto): Promise<number> {
+  private async count(filters: ExposureInput): Promise<number> {
     const [row] = await this.prisma.$queryRaw<[{ total: number }]>`
       SELECT COUNT(*)::int AS "total" FROM "Trade" ${this.whereClause(filters)}
     `;
@@ -310,7 +310,7 @@ export class TradeRepository {
    * columns a trader would search by; trigram indexes make that usable at
    * volume rather than a full scan per keystroke.
    */
-  private whereClause(filters: ExposureDto): Prisma.Sql {
+  private whereClause(filters: ExposureInput): Prisma.Sql {
     const conditions: Prisma.Sql[] = [];
 
     if (filters.status) {

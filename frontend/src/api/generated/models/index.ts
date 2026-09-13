@@ -5,16 +5,16 @@
  * OpenAPI spec version: 1.0.0
  */
 
-export * from './amendTradeCommand';
-export * from './amendTradeCommandInput';
+export * from './amendTradeRequest';
+export * from './amendTradeRequestInput';
 export * from './apiError';
 export * from './apiErrorDetailsItem';
 export * from './apiErrorInput';
 export * from './apiErrorInputDetailsItem';
 export * from './authenticatedUser';
 export * from './authenticatedUserInput';
-export * from './createTradeCommand';
-export * from './createTradeCommandInput';
+export * from './createTradeRequest';
+export * from './createTradeRequestInput';
 export * from './currentUserResponse';
 export * from './currentUserResponseInput';
 export * from './getTradeExposureParams';
@@ -24,8 +24,8 @@ export * from './healthStatusInputStatus';
 export * from './healthStatusStatus';
 export * from './listTradeFilterOptionsParams';
 export * from './listTradesParams';
-export * from './loginCommand';
-export * from './loginCommandInput';
+export * from './loginRequest';
+export * from './loginRequestInput';
 export * from './logout204';
 export * from './sortDirection';
 export * from './sortDirectionInput';
@@ -59,5 +59,5 @@ export * from './tradeStatus';
 export * from './tradeStatusCounts';
 export * from './tradeStatusCountsInput';
 export * from './tradeStatusInput';
-export * from './transitionTradeCommand';
-export * from './transitionTradeCommandInput';
+export * from './transitionTradeRequest';
+export * from './transitionTradeRequestInput';

@@ -11,7 +11,7 @@ Use one Fastify deployable organised first by business module — `trades` and
 `routes/ -> schemas/ -> services/ -> repositories/`. Business rules live in
 `services/`, Prisma and transactions in `repositories/`, HTTP in `routes/`. Each
 module's shared vocabulary — its enums and internal trade representation — sits in
-a single `types.ts` at the module root; request/response shapes and the command
+a single `types.ts` at the module root; request/response shapes and the request
 types derived from them live together in `schemas/`. Supporting directories sit
 beside the four layers where a module needs them: `errors/` for the failures a
 module raises, `trades/mappers/` for the row-to-domain translation its raw SQL

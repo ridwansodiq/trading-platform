@@ -35,7 +35,7 @@ export class InvalidTradeTransitionError extends ApplicationError {
 
 /**
  * Raised when the trade moved on between the client reading it and submitting a
- * command.
+ * operation.
  *
  * The error carries the current trade itself, so the UI can render its diff
  * without a follow-up request and without the route layer performing a second

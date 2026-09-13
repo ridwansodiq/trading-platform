@@ -1,9 +1,9 @@
 import { randomBytes, randomUUID } from "node:crypto";
-import type { AmendTradeDto } from "../schemas/amend-trade";
-import type { CreateTradeDto } from "../schemas/create-trade";
-import type { ExposureDto, ListFilterOptionsDto, ListTradesDto } from "../schemas/list-trades";
+import type { AmendTradeInput } from "../schemas/amend-trade";
+import type { CreateTradeInput } from "../schemas/create-trade";
+import type { ExposureInput, ListFilterOptionsInput, ListTradesInput } from "../schemas/list-trades";
 import type { TradeAuditEventRecord, TradeEvent, TradeState } from "../types";
-import type { TransitionTradeDto } from "../schemas/transition-trade";
+import type { TransitionTradeInput } from "../schemas/transition-trade";
 import { TradeAlreadyExistsError, TradeNotFoundError } from "../errors/trade";
 import type { TradeAuditRepository } from "../repositories/trade-audit";
 import type {
@@ -41,7 +41,7 @@ const REFERENCE_ATTEMPTS = 4;
  *
  * Owns the order of operations: decide, persist atomically, then publish. The
  * publication deliberately happens after the repository call returns, so a
- * rejected or rolled-back command never produces a notification, and it
+ * rejected or rolled-back operation never produces a notification, and it
  * publishes the row that was stored rather than the one that was requested.
  */
 export class TradeService {
@@ -51,7 +51,7 @@ export class TradeService {
     private readonly events: TradeEventPublisher
   ) {}
 
-  async list(input: ListTradesDto): Promise<TradePage> {
+  async list(input: ListTradesInput): Promise<TradePage> {
     return this.trades.list(input);
   }
 
@@ -61,11 +61,11 @@ export class TradeService {
    * Scoped by the same filters as the list and computed across every match, so
    * a total can never describe a different set of trades than the table.
    */
-  async getExposure(input: ExposureDto): Promise<TradeExposure> {
+  async getExposure(input: ExposureInput): Promise<TradeExposure> {
     return this.trades.exposure(input);
   }
 
-  async listFilterOptions(input: ListFilterOptionsDto) {
+  async listFilterOptions(input: ListFilterOptionsInput) {
     return this.trades.listFilterOptions(input);
   }
 
@@ -92,11 +92,11 @@ export class TradeService {
     return this.audit.listSince(afterStreamSequence, MAX_REPLAY_EVENTS);
   }
 
-  async create(input: CreateTradeDto): Promise<TradeState> {
+  async create(input: CreateTradeInput): Promise<TradeState> {
     return this.publishCommitted(await this.insertWithFreshReference(input));
   }
 
-  async amend(input: AmendTradeDto): Promise<TradeState> {
+  async amend(input: AmendTradeInput): Promise<TradeState> {
     const current = await this.trades.findById(input.tradeId);
     const decision = decideAmend(current, input.changes, input.expectedVersion, input.actor);
 
@@ -105,7 +105,7 @@ export class TradeService {
     );
   }
 
-  async transition(input: TransitionTradeDto): Promise<TradeState> {
+  async transition(input: TransitionTradeInput): Promise<TradeState> {
     const current = await this.trades.findById(input.tradeId);
     const decision = decideTransition(
       current,
@@ -133,7 +133,7 @@ export class TradeService {
   }
 
   /** Redraw the reference and retry if the generated one is already taken. */
-  private async insertWithFreshReference(input: CreateTradeDto): Promise<TradeEvent> {
+  private async insertWithFreshReference(input: CreateTradeInput): Promise<TradeEvent> {
     for (let attempt = 1; ; attempt += 1) {
       const decision = decideCreate({
         id: randomUUID(),

@@ -81,7 +81,7 @@ export function BlotterScreen({ user, onSignOut, onSessionExpired }: Props) {
   /**
    * The stream is a notification channel, not an authorisation one.
    *
-   * Commands go over REST, which is unaffected by a stream a proxy has closed,
+   * Writes go over REST, which is unaffected by a stream a proxy has closed,
    * so a dropped connection must not disable the desk. It only means the table
    * may be behind, which the connection indicator already says.
    */

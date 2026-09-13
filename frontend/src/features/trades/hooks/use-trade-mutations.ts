@@ -12,7 +12,7 @@ import { ok } from "@/api/unwrap";
 import { AUDIT_QUERY_ROOT } from "@/features/trades/hooks/use-trade-audit";
 import { TRADES_QUERY_ROOT } from "@/features/trades/hooks/use-trades";
 import { formatNotional } from "@/lib/format";
-import type { AmendTradeCommand, CreateTradeCommand } from "@/api/generated/models";
+import type { AmendTradeRequest, CreateTradeRequest } from "@/api/generated/models";
 import type { Trade, TradeErrorPayload } from "@/types/trade";
 
 export type VersionConflict = {
@@ -69,7 +69,7 @@ export function useTradeMutations() {
   }, [queryClient]);
 
   const create = useMutation({
-    mutationFn: async (body: CreateTradeCommand) => ok(await createTrade(body)),
+    mutationFn: async (body: CreateTradeRequest) => ok(await createTrade(body)),
     onSuccess: (trade) => {
       invalidate();
       toast.success("Trade booked", { description: tradeDetail(trade) });
@@ -82,7 +82,7 @@ export function useTradeMutations() {
    * had written to them.
    */
   const amend = useMutation({
-    mutationFn: async ({ id, body }: { id: string; body: AmendTradeCommand }) =>
+    mutationFn: async ({ id, body }: { id: string; body: AmendTradeRequest }) =>
       ok(await amendTrade(id, body)),
     onSuccess: (trade) => {
       invalidate();
@@ -114,7 +114,7 @@ export function useTradeMutations() {
       toast.error(
         conflict
           ? `${variables.kind === "execute" ? "Execution" : "Cancellation"} rejected · the trade moved to v${conflict.currentVersion}`
-          : apiErrorMessage(error, "The blotter service rejected this command."),
+          : apiErrorMessage(error, "The blotter service rejected this request."),
         conflict
           ? { description: "Reopen the trade to see the current version before retrying." }
           : undefined

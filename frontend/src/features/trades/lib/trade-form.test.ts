@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { changedFields, toFormValues, toTradeCommand, validateTradeForm } from "./trade-form";
+import { changedFields, toFormValues, toTradeRequest, validateTradeForm } from "./trade-form";
 import type { FormValues } from "./trade-form";
 import type { Trade } from "@/types/trade";
 
@@ -50,7 +50,7 @@ describe("changedFields", () => {
   });
 
   /**
-   * Comparing normalised commands rather than raw text: retyping the same value
+   * Comparing normalised requests rather than raw text: retyping the same value
    * differently is not an edit, and sending it would overwrite a concurrent
    * change for no reason.
    */
@@ -64,16 +64,16 @@ describe("changedFields", () => {
   });
 });
 
-describe("toTradeCommand", () => {
+describe("toTradeRequest", () => {
   it("normalises the values the form submits", () => {
-    const command = toTradeCommand(values({ symbol: " nvda ", book: " EQ-A ", quantity: "10" }));
-    expect(command).toMatchObject({ symbol: "NVDA", book: "EQ-A", quantity: 10 });
+    const request = toTradeRequest(values({ symbol: " nvda ", book: " EQ-A ", quantity: "10" }));
+    expect(request).toMatchObject({ symbol: "NVDA", book: "EQ-A", quantity: 10 });
   });
 
   it("round-trips a trade through the form without changing it", () => {
     const source = trade();
-    const command = toTradeCommand(toFormValues(source, NOW));
-    expect(command).toEqual({
+    const request = toTradeRequest(toFormValues(source, NOW));
+    expect(request).toEqual({
       symbol: source.symbol,
       side: source.side,
       quantity: source.quantity,

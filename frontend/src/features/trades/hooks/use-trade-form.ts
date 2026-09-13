@@ -10,14 +10,14 @@ import {
 import {
   changedFields,
   toFormValues,
-  toTradeCommand,
+  toTradeRequest,
   validateTradeForm,
   type AmendableField,
   type FieldErrors,
   type FormValues
 } from "@/features/trades/lib/trade-form";
 import { toTradeView } from "@/features/trades/lib/trade-view";
-import type { AmendTradeCommand, CreateTradeCommand } from "@/api/generated/models";
+import type { AmendTradeRequest, CreateTradeRequest } from "@/api/generated/models";
 import type { Trade, TradeView } from "@/types/trade";
 
 export type TradeFormMode = { kind: "create" } | { kind: "amend"; trade: TradeView };
@@ -118,7 +118,7 @@ export function useTradeForm(): TradeForm {
 
     setConflict(null);
     setSubmitError(null);
-    const command = toTradeCommand(form.values);
+    const request = toTradeRequest(form.values);
 
     try {
       if (form.mode.kind === "amend") {
@@ -135,14 +135,14 @@ export function useTradeForm(): TradeForm {
          */
         const body = {
           ...(Object.fromEntries(
-            changed.map((field) => [field, command[field]])
-          ) as Partial<CreateTradeCommand>),
+            changed.map((field) => [field, request[field]])
+          ) as Partial<CreateTradeRequest>),
           expectedVersion: form.mode.trade.version
-        } satisfies AmendTradeCommand;
+        } satisfies AmendTradeRequest;
 
         await amend.mutateAsync({ id: form.mode.trade.id, body });
       } else {
-        await create.mutateAsync(command);
+        await create.mutateAsync(request);
       }
       close();
     } catch (error) {

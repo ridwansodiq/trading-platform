@@ -109,7 +109,7 @@ describe("booking a trade", () => {
     expect(result.current.changed).toEqual([]);
   });
 
-  it("sends the whole normalised command and closes on success", async () => {
+  it("sends the whole normalised request and closes on success", async () => {
     const { result } = mount();
     act(() => result.current.startCreate());
     act(() =>

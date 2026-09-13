@@ -6,7 +6,7 @@ Accepted.
 
 ## Decision
 
-Use PostgreSQL from the outset. Store the current trade and an append-only audit table. Apply non-create commands with a conditional version update and insert the audit event in the same transaction.
+Use PostgreSQL from the outset. Store the current trade and an append-only audit table. Apply non-create operations with a conditional version update and insert the audit event in the same transaction.
 
 ## Rationale
 

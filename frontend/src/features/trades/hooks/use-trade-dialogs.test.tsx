@@ -25,8 +25,8 @@ const { useTradeDialogs } = await import("./use-trade-dialogs");
  * The two surfaces opened over a single row.
  *
  * Execute and cancel are irreversible, so what matters is that nothing reaches
- * the server until the user confirms, that the command carries the version they
- * confirmed against, and that the dialog closes either way — a rejected command
+ * the server until the user confirms, that the request carries the version they
+ * confirmed against, and that the dialog closes either way — a rejected request
  * leaving its dialog up would strand them.
  */
 
@@ -104,7 +104,7 @@ describe("terminal transitions", () => {
     expect(result.current.confirm).toBeNull();
   });
 
-  it("closes the dialog even when the command is rejected", async () => {
+  it("closes the dialog even when the request is rejected", async () => {
     executeTrade.mockRejectedValue(versionConflict(trade({ version: 9 }), 3));
 
     const { result } = mount();

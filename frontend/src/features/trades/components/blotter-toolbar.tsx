@@ -26,7 +26,7 @@ type Props = {
   statusCounts: Record<TradeStatus, number>;
   totalInScope: number;
   isFetching: boolean;
-  /** The stream is down, so these rows may be behind. Commands still work. */
+  /** The stream is down, so these rows may be behind. Writes still work. */
   isStale: boolean;
   onRefresh: () => void;
   onNewTrade: () => void;

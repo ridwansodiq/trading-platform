@@ -18,7 +18,7 @@ import type { Trade } from "@/api/generated/models";
  * **Simulate** starts a loop that runs two actions a second until it is
  * stopped: every third one books a fresh trade, and the rest move a live one —
  * mostly nudging its price or quantity, sometimes executing or cancelling it
- * outright. Each action is an ordinary REST command over the same endpoints a
+ * outright. Each action is an ordinary REST request over the same endpoints a
  * human's
  * clicks use, so it is version-checked, audited and streamed back like any
  * other — the blotter picks the results up over SSE, which is why nothing here
@@ -30,7 +30,7 @@ import type { Trade } from "@/api/generated/models";
  * chosen — rather than on trades scrolled past. It falls back to reading the
  * first page itself only when the screen offers nothing live to act on.
  *
- * That is 120 commands a minute. Nothing on the API throttles them — login is
+ * That is 120 requests a minute. Nothing on the API throttles them — login is
  * the only rate-limited route — so `TICK_MS` is the only ceiling there is, and
  * the share spent on bookings is what keeps the blotter ahead of the trades it
  * retires.
@@ -262,7 +262,7 @@ async function tick(): Promise<void> {
       stop();
       toast.error(
         // `ApiError` already carries the server's message; anything else is a fault.
-        error instanceof Error ? error.message : "The blotter service rejected this command.",
+        error instanceof Error ? error.message : "The blotter service rejected this request.",
         { description: "Simulation stopped." }
       );
       return;

@@ -135,8 +135,8 @@ describe("confirming a terminal transition", () => {
     expect(onConfirm).toHaveBeenCalledTimes(1);
   });
 
-  /** A second click while the first command is in flight would send it twice. */
-  it("locks both controls while the command is in flight", () => {
+  /** A second click while the first request is in flight would send it twice. */
+  it("locks both controls while the request is in flight", () => {
     renderDialog({ pending: true });
     expect(screen.getByRole("button", { name: "Execute trade" })).toBeDisabled();
     expect(screen.getByRole("button", { name: "Keep as is" })).toBeDisabled();

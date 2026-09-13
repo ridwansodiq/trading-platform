@@ -6,7 +6,7 @@
  */
 import type { TradeSideInput } from './tradeSideInput';
 
-export interface AmendTradeCommandInput {
+export interface AmendTradeRequestInput {
   /**
      * @minLength 1
      * @maxLength 12

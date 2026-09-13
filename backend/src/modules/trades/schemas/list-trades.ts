@@ -82,6 +82,6 @@ export const tradeFilterOptionsSchema = z
  */
 export type TradeSortKey = z.infer<typeof tradeSortKeySchema>;
 export type TradeFilterField = z.infer<typeof tradeFilterFieldSchema>;
-export type ListTradesDto = z.infer<typeof listTradesQuerySchema>;
-export type ExposureDto = z.infer<typeof exposureQuerySchema>;
-export type ListFilterOptionsDto = z.infer<typeof filterOptionsQuerySchema>;
+export type ListTradesInput = z.infer<typeof listTradesQuerySchema>;
+export type ExposureInput = z.infer<typeof exposureQuerySchema>;
+export type ListFilterOptionsInput = z.infer<typeof filterOptionsQuerySchema>;

@@ -26,7 +26,7 @@ import type {
 import type {
   ApiError,
   CurrentUserResponse,
-  LoginCommandInput,
+  LoginRequestInput,
   Logout204
 } from '../../models';
 
@@ -92,7 +92,7 @@ export const getLoginUrl = () => {
   return `/api/auth/login`
 }
 
-export const login = async (loginCommandInput: LoginCommandInput, options?: RequestInit): Promise<loginResponse> => {
+export const login = async (loginRequestInput: LoginRequestInput, options?: RequestInit): Promise<loginResponse> => {
 
     const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
     if (!h) return {};
@@ -113,7 +113,7 @@ return fusionFetch<loginResponse>(getLoginUrl(),
     ...options,
     method: 'POST',
     headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
-    body: JSON.stringify(loginCommandInput)
+    body: JSON.stringify(loginRequestInput)
   }
 );}
 
@@ -151,9 +151,9 @@ const {mutation: mutationOptions} = options ?
   return  { mutationFn, ...mutationOptions }}
 
     export type LoginMutationResult = NonNullable<Awaited<ReturnType<typeof login>>>
-    export type LoginMutationBody = LoginCommandInput
+    export type LoginMutationBody = LoginRequestInput
     export type LoginMutationError = ApiError
-    export type LoginMutationVariables = {data: LoginCommandInput}
+    export type LoginMutationVariables = {data: LoginRequestInput}
 
     export const useLogin = <TError = ApiError,
     TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof login>>, TError,LoginMutationVariables, TContext>, }

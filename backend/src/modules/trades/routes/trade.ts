@@ -21,7 +21,7 @@ import {
 import type { TransitionTradeBody } from "../schemas/transition-trade";
 import { transitionTradeSchema } from "../schemas/transition-trade";
 import type { AmendableTradeFields } from "../schemas/amend-trade";
-import type { ExposureDto, ListFilterOptionsDto, ListTradesDto } from "../schemas/list-trades";
+import type { ExposureInput, ListFilterOptionsInput, ListTradesInput } from "../schemas/list-trades";
 import type { TradeActor } from "../types";
 import type { TradeService } from "../services/trade";
 
@@ -67,7 +67,7 @@ export function createTradeRoutes({ tradeService, requireAuth }: TradeRoutesOpti
           response: { 200: tradePageSchema, ...errors }
         }
       },
-      async (request) => tradeService.list(request.query as ListTradesDto)
+      async (request) => tradeService.list(request.query as ListTradesInput)
     );
 
     app.get(
@@ -84,7 +84,7 @@ export function createTradeRoutes({ tradeService, requireAuth }: TradeRoutesOpti
           response: { 200: tradeExposureSchema, ...errors }
         }
       },
-      async (request) => tradeService.getExposure(request.query as ExposureDto)
+      async (request) => tradeService.getExposure(request.query as ExposureInput)
     );
 
     app.get(
@@ -100,7 +100,7 @@ export function createTradeRoutes({ tradeService, requireAuth }: TradeRoutesOpti
           response: { 200: tradeFilterOptionsSchema, ...errors }
         }
       },
-      async (request) => tradeService.listFilterOptions(request.query as ListFilterOptionsDto)
+      async (request) => tradeService.listFilterOptions(request.query as ListFilterOptionsInput)
     );
 
     app.post(

@@ -24,9 +24,9 @@ import type {
 } from '@tanstack/react-query';
 
 import type {
-  AmendTradeCommandInput,
+  AmendTradeRequestInput,
   ApiError,
-  CreateTradeCommandInput,
+  CreateTradeRequestInput,
   GetTradeExposureParams,
   ListTradeFilterOptionsParams,
   ListTradesParams,
@@ -37,7 +37,7 @@ import type {
   TradeExposure,
   TradeFilterOptions,
   TradePage,
-  TransitionTradeCommandInput
+  TransitionTradeRequestInput
 } from '../../models';
 
 import { fusionFetch } from '../../../fetch-client';
@@ -232,7 +232,7 @@ export const getCreateTradeUrl = () => {
   return `/api/trades`
 }
 
-export const createTrade = async (createTradeCommandInput: CreateTradeCommandInput, options?: RequestInit): Promise<createTradeResponse> => {
+export const createTrade = async (createTradeRequestInput: CreateTradeRequestInput, options?: RequestInit): Promise<createTradeResponse> => {
 
     const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
     if (!h) return {};
@@ -253,7 +253,7 @@ return fusionFetch<createTradeResponse>(getCreateTradeUrl(),
     ...options,
     method: 'POST',
     headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
-    body: JSON.stringify(createTradeCommandInput)
+    body: JSON.stringify(createTradeRequestInput)
   }
 );}
 
@@ -291,9 +291,9 @@ const {mutation: mutationOptions} = options ?
   return  { mutationFn, ...mutationOptions }}
 
     export type CreateTradeMutationResult = NonNullable<Awaited<ReturnType<typeof createTrade>>>
-    export type CreateTradeMutationBody = CreateTradeCommandInput
+    export type CreateTradeMutationBody = CreateTradeRequestInput
     export type CreateTradeMutationError = TradeError
-    export type CreateTradeMutationVariables = {data: CreateTradeCommandInput}
+    export type CreateTradeMutationVariables = {data: CreateTradeRequestInput}
 
     export const useCreateTrade = <TError = TradeError,
     TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof createTrade>>, TError,CreateTradeMutationVariables, TContext>, }
@@ -755,7 +755,7 @@ export const getAmendTradeUrl = (id: string,) => {
  * Applies only the fields present in the body. Send just what changed: an omitted field keeps its current value, so two traders amending different fields of the same trade do not overwrite each other.
  */
 export const amendTrade = async (id: string,
-    amendTradeCommandInput: AmendTradeCommandInput, options?: RequestInit): Promise<amendTradeResponse> => {
+    amendTradeRequestInput: AmendTradeRequestInput, options?: RequestInit): Promise<amendTradeResponse> => {
 
     const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
     if (!h) return {};
@@ -776,7 +776,7 @@ return fusionFetch<amendTradeResponse>(getAmendTradeUrl(id),
     ...options,
     method: 'PATCH',
     headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
-    body: JSON.stringify(amendTradeCommandInput)
+    body: JSON.stringify(amendTradeRequestInput)
   }
 );}
 
@@ -814,9 +814,9 @@ const {mutation: mutationOptions} = options ?
   return  { mutationFn, ...mutationOptions }}
 
     export type AmendTradeMutationResult = NonNullable<Awaited<ReturnType<typeof amendTrade>>>
-    export type AmendTradeMutationBody = AmendTradeCommandInput
+    export type AmendTradeMutationBody = AmendTradeRequestInput
     export type AmendTradeMutationError = TradeError
-    export type AmendTradeMutationVariables = {id: string;data: AmendTradeCommandInput}
+    export type AmendTradeMutationVariables = {id: string;data: AmendTradeRequestInput}
 
     export const useAmendTrade = <TError = TradeError,
     TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof amendTrade>>, TError,AmendTradeMutationVariables, TContext>, }
@@ -1009,7 +1009,7 @@ export const getExecuteTradeUrl = (id: string,) => {
 }
 
 export const executeTrade = async (id: string,
-    transitionTradeCommandInput: TransitionTradeCommandInput, options?: RequestInit): Promise<executeTradeResponse> => {
+    transitionTradeRequestInput: TransitionTradeRequestInput, options?: RequestInit): Promise<executeTradeResponse> => {
 
     const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
     if (!h) return {};
@@ -1030,7 +1030,7 @@ return fusionFetch<executeTradeResponse>(getExecuteTradeUrl(id),
     ...options,
     method: 'POST',
     headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
-    body: JSON.stringify(transitionTradeCommandInput)
+    body: JSON.stringify(transitionTradeRequestInput)
   }
 );}
 
@@ -1068,9 +1068,9 @@ const {mutation: mutationOptions} = options ?
   return  { mutationFn, ...mutationOptions }}
 
     export type ExecuteTradeMutationResult = NonNullable<Awaited<ReturnType<typeof executeTrade>>>
-    export type ExecuteTradeMutationBody = TransitionTradeCommandInput
+    export type ExecuteTradeMutationBody = TransitionTradeRequestInput
     export type ExecuteTradeMutationError = TradeError
-    export type ExecuteTradeMutationVariables = {id: string;data: TransitionTradeCommandInput}
+    export type ExecuteTradeMutationVariables = {id: string;data: TransitionTradeRequestInput}
 
     export const useExecuteTrade = <TError = TradeError,
     TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof executeTrade>>, TError,ExecuteTradeMutationVariables, TContext>, }
@@ -1135,7 +1135,7 @@ export const getCancelTradeUrl = (id: string,) => {
 }
 
 export const cancelTrade = async (id: string,
-    transitionTradeCommandInput: TransitionTradeCommandInput, options?: RequestInit): Promise<cancelTradeResponse> => {
+    transitionTradeRequestInput: TransitionTradeRequestInput, options?: RequestInit): Promise<cancelTradeResponse> => {
 
     const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
     if (!h) return {};
@@ -1156,7 +1156,7 @@ return fusionFetch<cancelTradeResponse>(getCancelTradeUrl(id),
     ...options,
     method: 'POST',
     headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
-    body: JSON.stringify(transitionTradeCommandInput)
+    body: JSON.stringify(transitionTradeRequestInput)
   }
 );}
 
@@ -1194,9 +1194,9 @@ const {mutation: mutationOptions} = options ?
   return  { mutationFn, ...mutationOptions }}
 
     export type CancelTradeMutationResult = NonNullable<Awaited<ReturnType<typeof cancelTrade>>>
-    export type CancelTradeMutationBody = TransitionTradeCommandInput
+    export type CancelTradeMutationBody = TransitionTradeRequestInput
     export type CancelTradeMutationError = TradeError
-    export type CancelTradeMutationVariables = {id: string;data: TransitionTradeCommandInput}
+    export type CancelTradeMutationVariables = {id: string;data: TransitionTradeRequestInput}
 
     export const useCancelTrade = <TError = TradeError,
     TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof cancelTrade>>, TError,CancelTradeMutationVariables, TContext>, }

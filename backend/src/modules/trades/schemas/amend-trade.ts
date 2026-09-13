@@ -5,14 +5,14 @@ import type { TradeActor } from "../types";
 export const amendTradeSchema = createTradeSchema
   .partial()
   .extend({ expectedVersion: z.number().int().positive() })
-  .meta({ id: "AmendTradeCommand" });
+  .meta({ id: "AmendTradeRequest" });
 
 export type AmendTradeBody = z.infer<typeof amendTradeSchema>;
 
-type AmendCommand = Omit<z.infer<typeof amendTradeSchema>, "expectedVersion">;
+type AmendRequest = Omit<z.infer<typeof amendTradeSchema>, "expectedVersion">;
 
 /**
- * Fields an amendment may change — every key of the command except the
+ * Fields an amendment may change — every key of the request except the
  * concurrency token. Derived from the schema so the two can never disagree
  * about, say, whether `status` is amendable (it is not: status moves only
  * through execute and cancel).
@@ -23,10 +23,10 @@ type AmendCommand = Omit<z.infer<typeof amendTradeSchema>, "expectedVersion">;
  * changes over the current trade without re-checking each field.
  */
 export type AmendableTradeFields = {
-  [K in keyof AmendCommand]?: Exclude<AmendCommand[K], undefined>;
+  [K in keyof AmendRequest]?: Exclude<AmendRequest[K], undefined>;
 };
 
-export type AmendTradeDto = {
+export type AmendTradeInput = {
   tradeId: string;
   expectedVersion: number;
   changes: AmendableTradeFields;

@@ -29,7 +29,7 @@ export type TradeDialogs = {
  * one trade and nothing else — and the reason the blotter cares about both:
  * while either is up, the single-key shortcuts have to stand down.
  *
- * Execute and cancel are irreversible, so the command is deliberately split
+ * Execute and cancel are irreversible, so the request is deliberately split
  * from the click that asked for it: `startTransition` only opens the dialog,
  * and nothing reaches the server until `confirmTransition`.
  */

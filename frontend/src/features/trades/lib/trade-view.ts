@@ -9,7 +9,7 @@ import type { Trade, TradeView } from "@/types/trade";
  *   signedQuantity = BUY ? +quantity : -quantity
  *   signedNotional = BUY ? +notional : -notional
  *
- * Derived in the UI on every read — never persisted, never sent in a command,
+ * Derived in the UI on every read — never persisted, never sent in a request,
  * never written to an audit snapshot. Sorting by them happens in SQL over the
  * same expressions, so the table is not limited to ordering the current page.
  */

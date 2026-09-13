@@ -113,7 +113,7 @@ describe("trade workflow", () => {
    * The stream is read over a real socket rather than through `app.inject`: the
    * response is hijacked and never ends, so an injected request would never
    * resolve. It has to be *this* app, because an event only reaches the broker
-   * of the instance that handled the command that produced it.
+   * of the instance that handled the operation that produced it.
    */
   const streamOrigin = async () => (origin ??= await app.listen({ port: 0, host: "127.0.0.1" }));
 
@@ -248,7 +248,7 @@ describe("trade workflow", () => {
     ]);
   });
 
-  it("lets exactly one of two concurrent commands against the same version win", async () => {
+  it("lets exactly one of two concurrent operations against the same version win", async () => {
     const trade = await createTrade();
     const tradeId = trade.json().id;
 
@@ -273,7 +273,7 @@ describe("trade workflow", () => {
     expect((await get(`/api/trades/${tradeId}/audit`)).json().data).toHaveLength(2);
   });
 
-  it("writes no audit event when a command is rejected", async () => {
+  it("writes no audit event when an operation is rejected", async () => {
     const trade = await createTrade();
     const tradeId = trade.json().id;
     const auditCount = () => prisma.tradeAuditEvent.count({ where: { tradeId } });

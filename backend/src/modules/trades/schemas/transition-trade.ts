@@ -3,13 +3,13 @@ import type { TradeActor } from "../types";
 
 export const transitionTradeSchema = z
   .object({ expectedVersion: z.number().int().positive() })
-  .meta({ id: "TransitionTradeCommand" });
+  .meta({ id: "TransitionTradeRequest" });
 
 export type TransitionTradeBody = z.infer<typeof transitionTradeSchema>;
 
 export type TradeTransition = "EXECUTE" | "CANCEL";
 
-export type TransitionTradeDto = {
+export type TransitionTradeInput = {
   tradeId: string;
   transition: TradeTransition;
   expectedVersion: number;

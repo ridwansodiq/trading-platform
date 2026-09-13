@@ -1,6 +1,6 @@
 import { CreateTradeBody } from "@/api/generated/validation/trades/trades.zod";
 import { fromDateTimeLocalValue, toDateTimeLocalValue } from "@/lib/format";
-import type { CreateTradeCommand } from "@/api/generated/models";
+import type { CreateTradeRequest } from "@/api/generated/models";
 import type { Trade, TradeSide } from "@/types/trade";
 
 /**
@@ -21,7 +21,7 @@ export const AMENDABLE_FIELDS = [
   "book",
   "counterparty",
   "tradeTimestamp"
-] as const satisfies ReadonlyArray<keyof CreateTradeCommand>;
+] as const satisfies ReadonlyArray<keyof CreateTradeRequest>;
 
 export type AmendableField = (typeof AMENDABLE_FIELDS)[number];
 
@@ -53,8 +53,8 @@ export function toFormValues(trade: Trade | null, now: Date): FormValues {
   };
 }
 
-/** The normalised command the form would submit. */
-export function toTradeCommand(values: FormValues): CreateTradeCommand {
+/** The normalised request the form would submit. */
+export function toTradeRequest(values: FormValues): CreateTradeRequest {
   return {
     symbol: values.symbol.trim().toUpperCase(),
     side: values.side,
@@ -71,12 +71,12 @@ export function toTradeCommand(values: FormValues): CreateTradeCommand {
 /**
  * Which fields differ from the values the form opened with.
  *
- * Compared as normalised commands, so retyping the same value with different
+ * Compared as normalised requests, so retyping the same value with different
  * whitespace or casing is not treated as an edit and does not get sent.
  */
 export function changedFields(baseline: FormValues, current: FormValues): AmendableField[] {
-  const before = toTradeCommand(baseline);
-  const after = toTradeCommand(current);
+  const before = toTradeRequest(baseline);
+  const after = toTradeRequest(current);
   return AMENDABLE_FIELDS.filter((field) => !Object.is(before[field], after[field]));
 }
 
@@ -107,7 +107,7 @@ export function validateTradeForm(values: FormValues): FieldErrors {
     errors.tradeTimestamp = "Trade time is required.";
   }
 
-  const parsed = CreateTradeBody.safeParse(toTradeCommand(values));
+  const parsed = CreateTradeBody.safeParse(toTradeRequest(values));
   if (!parsed.success) {
     for (const issue of parsed.error.issues) {
       const field = issue.path[0] as keyof FormValues | undefined;

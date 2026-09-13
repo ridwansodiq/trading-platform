@@ -133,7 +133,7 @@ describe("decideAmend", () => {
     expect(decision.nextTrade.traderUserId).toBe(newTrade().traderUserId);
   });
 
-  it("rejects a stale command without producing a decision", () => {
+  it("rejects a stale operation without producing a decision", () => {
     expect(() => decideAmend(newTrade(), { price: 270 }, 2, actor)).toThrow(
       "Trade has changed since it was opened."
     );

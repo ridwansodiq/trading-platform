@@ -6,7 +6,7 @@ Accepted.
 
 ## Decision
 
-Use Argon2id password hashes and random opaque session tokens. Persist only SHA-256 token hashes and deliver the raw token in an HTTP-only, same-site cookie. Resolve the command actor on the backend.
+Use Argon2id password hashes and random opaque session tokens. Persist only SHA-256 token hashes and deliver the raw token in an HTTP-only, same-site cookie. Resolve the acting user on the backend.
 
 ## Rationale
 

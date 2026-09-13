@@ -6,7 +6,7 @@
  */
 import type { TradeSide } from './tradeSide';
 
-export interface CreateTradeCommand {
+export interface CreateTradeRequest {
   /**
      * @minLength 1
      * @maxLength 12

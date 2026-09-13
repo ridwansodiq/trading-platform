@@ -321,7 +321,7 @@ describe("marking what an amendment will send", () => {
 });
 
 describe("while a save is in flight", () => {
-  it("locks both footer controls so the command cannot be sent twice", () => {
+  it("locks both footer controls so the request cannot be sent twice", () => {
     renderDrawer({ pending: true });
     expect(screen.getByRole("button", { name: /Saving/ })).toBeDisabled();
     expect(screen.getByRole("button", { name: "Cancel" })).toBeDisabled();

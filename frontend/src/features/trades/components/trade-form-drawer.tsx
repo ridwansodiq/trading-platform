@@ -17,7 +17,7 @@ import { FilterCombobox } from "@/features/trades/components/filter-combobox";
 import type { VersionConflict } from "@/features/trades/hooks/use-trade-mutations";
 import type { TradeFormMode } from "@/features/trades/hooks/use-trade-form";
 import {
-  toTradeCommand,
+  toTradeRequest,
   type AmendableField,
   type FieldErrors,
   type FormValues
@@ -127,7 +127,7 @@ export function TradeFormDrawer({
   /** The user's in-progress values, shaped as a trade so the panel can diff them. */
   const attempted: Trade | null =
     amending && conflict?.currentTrade && values
-      ? { ...conflict.currentTrade, ...toTradeCommand(values) }
+      ? { ...conflict.currentTrade, ...toTradeRequest(values) }
       : null;
 
   return (

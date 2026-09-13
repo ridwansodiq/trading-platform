@@ -86,14 +86,14 @@ export function decideCreate(input: CreateDecisionInput): MutationDecision {
 }
 
 /**
- * Guards shared by every non-create command: the trade must exist, must still
+ * Guards shared by every non-create operation: the trade must exist, must still
  * be working, and the caller must hold the current version.
  *
  * Order matters. A terminal trade is checked before the version because it
  * cannot be amended at *any* version — reporting a conflict there would invite
  * the client to retry with the current version, which would fail identically.
  * It is also the order the repository uses when its compare-and-swap matches no
- * row, so a command rejected in memory and one that loses a race report the
+ * row, so an operation rejected in memory and one that loses a race report the
  * same reason.
  *
  * The conflict carries the trade it read, so the caller sees what changed
