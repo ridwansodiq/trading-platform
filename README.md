@@ -1,6 +1,6 @@
 # Fusion Trade Blotter
 
-A full-stack trade blotter built, the application uses a React frontend on ShadCN/Radix + Tailwind v4 with a headless TanStack Table blotter, a Fastify modular monolith, and PostgreSQL through Prisma.
+A full-stack trade blotter app, the application uses a React frontend on ShadCN/Radix + Tailwind v4 with a headless TanStack Table blotter, a Fastify modular monolith, and PostgreSQL through Prisma.
 
 The backend is a **modular monolith using Service and Repository layers**: organised first by business module (`trades`, `auth`), with `routes -> schemas -> services -> repositories` inside each.
 
@@ -49,10 +49,7 @@ database exists.
 ```bash
 docker compose up --build   # the whole application: database, API, SPA
 npm run dev                 # backend and frontend with hot reload
-npm run verify              # types, lint, boundaries, tests, builds
-npm run lint:boundaries     # proves the architecture rules actually reject violations
-npm run test:domain         # fast lifecycle rule tests
-npm run test:integration    # PostgreSQL-backed API workflow tests
+npm run verify              # types, lint, boundaries, tests, builds — see Testing below
 npm run api:generate        # refresh OpenAPI spec + generated client (output is committed)
 npm run db:seed -w backend  # idempotent demo data seed (5,000 trades)
 ```
@@ -76,6 +73,62 @@ SEED_TRADE_COUNT=25000 SEED_RESET=true npm run db:seed -w backend
 stopped, every third one booking a fresh trade and the rest nudging the price or quantity of a
 live trade from the first page. 
 
+## Testing
+
+```bash
+npm run verify              # the whole gate: types, lint, boundaries, tests, builds
+npm test                    # backend and frontend unit tests
+npm run test:domain         # trade lifecycle rules, no database needed
+npm run test:integration    # API workflows against PostgreSQL — needs `docker compose up -d postgres`
+npm run test:frontend       # hooks, components, and the pure logic behind them
+```
+
+Three layers, each testing what only it can: the lifecycle rules as pure functions, the API
+end to end against a real database (concurrency conflicts, audit writes, status transitions),
+and the frontend over a fake `EventSource` and a mocked client. `npm run lint:boundaries`
+is part of the gate too — it proves the module rules reject violations rather than trusting
+that nobody wrote one.
+
+## Assumptions
+
+- **One desk, one tenant.** No firm or book-level permissions: any signed-in user can act on
+  any trade, and the audit trail records who did.
+- **Trades are notional.** Booking, amending and cancelling are the whole lifecycle — no
+  settlement, clearing, or downstream confirmation.
+- **`NEW → EXECUTED | CANCELLED`** is the status model, extending the brief's
+  `ACTIVE | CANCELLED` so an amendment has something to be blocked by. See
+  [docs/domain/trade-lifecycle.md](./docs/domain/trade-lifecycle.md).
+- **Symbols, books and counterparties are free text**, validated for shape but not against a
+  reference data service.
+- **The two demo accounts are fixtures.** There is no registration, password reset or
+  user administration.
+
+## Trade-offs
+
+- **A modular monolith, not services.** Module boundaries are enforced in lint, so the seams
+  are real and a split stays available — without paying for it now. [ADR 0001](./docs/adr/0001-modular-monolith.md)
+- **SSE notifies; REST stays authoritative.** An event tells the client a trade moved and the
+  client refetches. That costs a round trip per event per client, and is always correct.
+  [ADR 0003](./docs/adr/0003-rest-sse-and-openapi.md)
+- **The broker is in-process**, capped at `SSE_MAX_CLIENTS` (500), and replay reads the audit
+  table rather than a buffer — so reconnects survive a restart, but a second instance would
+  need a shared bus.
+- **Aggregates and derived columns are computed in SQL**, not in the browser: correct over the
+  whole book rather than the page in view, at the cost of a query per screen.
+  [ADR 0006](./docs/adr/0006-server-side-derived-columns-and-aggregates.md)
+- **Optimistic concurrency over locking.** A stale amend is rejected with a version conflict
+  the UI can explain, rather than held behind a lock.
+  [ADR 0002](./docs/adr/0002-postgresql-audit-and-concurrency.md)
+- **Sessions are database-backed cookies**, not JWTs — revocable mid-stream, which is what
+  lets a live SSE connection be closed the moment its session dies.
+  [ADR 0004](./docs/adr/0004-session-authentication.md)
+
+## AI Usage
+
+This project was built with AI assistance. [AI_USAGE.md](./AI_USAGE.md) covers the tools, how
+they were used, and which suggestions were taken or rejected; [PROMPT_LOG.md](./PROMPT_LOG.md)
+is a representative sample of the prompts behind the significant decisions.
+
 ## Repository Map
 
 ```text
@@ -83,7 +136,7 @@ backend/src/modules/trades/             routes, schemas, services, repositories,
 backend/src/modules/auth/               identity, sessions, requireAuth middleware
 backend/src/realtime/sse/               SSE broker, stream route, trade publisher
 backend/src/infrastructure/             prisma, config, logging, error base
-backend/prisma/                         schema, migrations, and seed
+backend/prisma/                         the database: schema, migrations, and seed
 backend/Dockerfile                      production image: API, seed, and built SPA
 backend/docker-entrypoint.sh            migrate, seed, then exec the server
 
